@@ -4,7 +4,6 @@ import Alert from "@mui/material/Alert";
 import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import Chip from "@mui/material/Chip";
 import CircularProgress from "@mui/material/CircularProgress";
 import Container from "@mui/material/Container";
 import Dialog from "@mui/material/Dialog";
@@ -27,6 +26,7 @@ import GoogleGlyph from "../components/GoogleGlyph";
 import { useAuth } from "../context/auth-context";
 import { useCart } from "../context/cart-context";
 import { useColorMode } from "../context/color-mode-context";
+import { setFlash } from "../lib/flash";
 import { MONO } from "../theme";
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -177,32 +177,141 @@ function PasswordForm() {
 }
 
 function LinkedAccounts() {
-  const { user } = useAuth();
+  const { user, linkGoogle, unlinkProvider } = useAuth();
+  const [busy, setBusy] = useState(null);
+  const [error, setError] = useState(null);
+  const [notice, setNotice] = useState(null);
+
   const linkedGoogle = user.providers?.includes("google");
   const linkedEmail = user.providers?.includes("email");
+  const canDisconnect = (user.providers?.length ?? 0) > 1;
+
+  const rows = [];
+  if (linkedGoogle) {
+    rows.push({
+      id: "google",
+      title: "Google",
+      subtitle: user.email,
+      icon: <GoogleGlyph sx={{ width: 18, height: 18 }} />,
+    });
+  }
+  if (linkedEmail) {
+    rows.push({
+      id: "email",
+      title: "Email",
+      subtitle: user.email,
+      icon: <EmailOutlinedIcon sx={{ fontSize: 20, color: "text.secondary" }} />,
+    });
+  }
+
+  async function handleDisconnect(provider) {
+    setError(null);
+    setNotice(null);
+    setBusy(provider);
+    const result = await unlinkProvider(provider);
+    setBusy(null);
+    if (!result.success) {
+      setError(result.error);
+      return;
+    }
+    setNotice(`${provider === "google" ? "Google" : "Email"} disconnected.`);
+  }
+
+  async function handleConnectGoogle() {
+    setError(null);
+    setNotice(null);
+    setBusy("link-google");
+    const result = await linkGoogle();
+    setBusy(null);
+    if (!result.success) setError(result.error);
+  }
 
   return (
-    <Stack spacing={1.25}>
-      {linkedGoogle && (
-        <Chip
-          icon={<GoogleGlyph />}
-          label="Linked · Google"
-          variant="outlined"
-          sx={{ justifyContent: "flex-start", height: 40, px: 0.5, maxWidth: 280 }}
-        />
-      )}
-      {linkedEmail && (
-        <Chip
-          icon={<EmailOutlinedIcon />}
-          label="Linked · Email"
-          variant="outlined"
-          sx={{ justifyContent: "flex-start", height: 40, px: 0.5, maxWidth: 280 }}
-        />
-      )}
-      {!linkedGoogle && !linkedEmail && (
+    <Stack spacing={2}>
+      {error && <Alert severity="error">{error}</Alert>}
+      {notice && <Alert severity="success">{notice}</Alert>}
+
+      {rows.length === 0 ? (
         <Typography variant="body2" color="text.secondary">
-          No sign-in methods listed yet.
+          No sign-in methods connected yet.
         </Typography>
+      ) : (
+        <Box>
+          {rows.map((row, index) => (
+            <Box key={row.id}>
+              {index > 0 && <Divider />}
+              <Stack
+                direction="row"
+                spacing={1.5}
+                sx={{
+                  alignItems: "center",
+                  py: 1.75,
+                  minHeight: 64,
+                }}
+              >
+                <Box
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 1,
+                    display: "grid",
+                    placeItems: "center",
+                    flexShrink: 0,
+                    bgcolor: "action.hover",
+                  }}
+                >
+                  {row.icon}
+                </Box>
+
+                <Box sx={{ minWidth: 0, flex: 1 }}>
+                  <Typography sx={{ fontWeight: 600, lineHeight: 1.3 }}>{row.title}</Typography>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    noWrap
+                    title={row.subtitle}
+                  >
+                    {row.subtitle}
+                  </Typography>
+                </Box>
+
+                <Button
+                  size="small"
+                  color="inherit"
+                  disabled={!canDisconnect || busy === row.id}
+                  onClick={() => handleDisconnect(row.id)}
+                  sx={{ flexShrink: 0, textTransform: "none", fontWeight: 600 }}
+                >
+                  {busy === row.id ? <CircularProgress size={16} /> : "Disconnect"}
+                </Button>
+              </Stack>
+            </Box>
+          ))}
+        </Box>
+      )}
+
+      {!canDisconnect && rows.length > 0 && (
+        <Typography variant="caption" color="text.secondary">
+          Disconnect stays off while this is your only sign-in method.
+        </Typography>
+      )}
+
+      {!linkedGoogle && (
+        <Button
+          variant="outlined"
+          onClick={handleConnectGoogle}
+          disabled={busy === "link-google"}
+          startIcon={
+            busy === "link-google" ? (
+              <CircularProgress size={16} color="inherit" />
+            ) : (
+              <GoogleGlyph sx={{ width: 16, height: 16 }} />
+            )
+          }
+          sx={{ alignSelf: "flex-start", textTransform: "none", fontWeight: 600 }}
+        >
+          Connect Google
+        </Button>
       )}
     </Stack>
   );
@@ -365,6 +474,7 @@ export default function Account() {
               variant="outlined"
               onClick={async () => {
                 await logout();
+                setFlash("Signed out successfully.");
                 navigate("/");
               }}
             >
@@ -373,7 +483,10 @@ export default function Account() {
           </Stack>
         </Section>
 
-        <Section title="Linked accounts" description="How you can sign in to ShopEZ.">
+        <Section
+          title="Linked accounts"
+          description="Manage how you sign in to ShopEZ"
+        >
           <LinkedAccounts />
         </Section>
 

@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import { submitPayment } from "../services/paymentService";
+import { toUserMessage } from "../lib/errors";
 
 export function usePayment() {
   const [status, setStatus] = useState("idle");
@@ -16,7 +17,7 @@ export function usePayment() {
       setStatus("succeeded");
       return { success: true, receipt: result };
     } catch (cause) {
-      setError(cause.message);
+      setError(toUserMessage(cause, "Payment failed. Please try again."));
       setStatus("failed");
       return { success: false };
     }

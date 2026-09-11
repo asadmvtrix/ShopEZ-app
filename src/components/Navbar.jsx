@@ -28,6 +28,7 @@ import ShoppingCartOutlinedIcon from "@mui/icons-material/ShoppingCartOutlined";
 import BrandMark from "./BrandMark";
 import CartBadge from "./CartBadge";
 import { useAuth } from "../context/auth-context";
+import { setFlash } from "../lib/flash";
 import { useCart } from "../context/cart-context";
 import { useColorMode } from "../context/color-mode-context";
 import { getCategories } from "../data/products";
@@ -51,11 +52,19 @@ export default function Navbar() {
   const closeDrawer = () => setDrawerOpen(false);
 
   function handleLogout() {
-    void logout().then(() => {
-      setAccountAnchor(null);
-      closeDrawer();
-      navigate("/");
-    });
+    void logout()
+      .then(() => {
+        setAccountAnchor(null);
+        closeDrawer();
+        setFlash("Signed out successfully.");
+        navigate("/");
+      })
+      .catch(() => {
+        setAccountAnchor(null);
+        closeDrawer();
+        setFlash("Couldn’t sign out cleanly. Try again.", "error");
+        navigate("/");
+      });
   }
 
   return (

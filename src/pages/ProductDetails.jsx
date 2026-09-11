@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link as RouterLink, Navigate, useParams } from "react-router-dom";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
@@ -24,6 +24,7 @@ import ProductGrid from "../components/ProductGrid";
 import SectionHeader from "../components/SectionHeader";
 import { getBrand, getHighlights, getProductById, getProducts, getSku } from "../data/products";
 import { useCart } from "../context/cart-context";
+import { setFlash } from "../lib/flash";
 import {
   FREE_SHIPPING_THRESHOLD,
   MAX_QUANTITY_PER_ITEM,
@@ -72,6 +73,14 @@ function ServiceRow(props) {
   );
 }
 
+function MissingProduct() {
+  useEffect(() => {
+    setFlash("That product isn’t available.", "error");
+  }, []);
+
+  return <Navigate to="/browse" replace />;
+}
+
 export default function ProductDetails() {
   const { id } = useParams();
   const { addToCart, quantityOf } = useCart();
@@ -88,7 +97,7 @@ export default function ProductDetails() {
   }, [product]);
 
   if (!product) {
-    return <Navigate to="/browse" replace />;
+    return <MissingProduct />;
   }
 
   const brand = getBrand(product);

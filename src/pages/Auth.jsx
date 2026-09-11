@@ -21,6 +21,7 @@ import BrandMark from "../components/BrandMark";
 import GoogleGlyph from "../components/GoogleGlyph";
 import { useAuth } from "../context/auth-context";
 import { markAppEnter } from "../hooks/useWarmReveal";
+import { setFlash } from "../lib/flash";
 import { clearGoogleOAuthAttempt, consumeGoogleOAuthAttempt } from "../lib/oauth";
 import { supabase } from "../lib/supabase";
 
@@ -68,8 +69,9 @@ function usePasswordVisibility() {
   return { type: visible ? "text" : "password", adornment };
 }
 
-function goIntoApp(navigate, redirectTo, { needsName = false } = {}) {
+function goIntoApp(navigate, redirectTo, { needsName = false, flash } = {}) {
   clearGoogleOAuthAttempt();
+  if (flash) setFlash(flash);
   markAppEnter();
   if (needsName) {
     navigate("/account?setup=1", { replace: true });
@@ -142,7 +144,9 @@ function CredentialsForm({ isSignUp, redirectTo, verifiedNotice, onNeedsConfirma
       return;
     }
 
-    goIntoApp(navigate, redirectTo);
+    goIntoApp(navigate, redirectTo, {
+      flash: isSignUp ? "Account created successfully." : "Signed in successfully.",
+    });
   }
 
   async function onGoogle() {
@@ -160,11 +164,6 @@ function CredentialsForm({ isSignUp, redirectTo, verifiedNotice, onNeedsConfirma
       {verifiedNotice && (
         <Alert severity="success" sx={{ mb: 2.5 }}>
           Email verified. Sign in to continue.
-        </Alert>
-      )}
-      {redirectTo && !verifiedNotice && (
-        <Alert severity="info" sx={{ mb: 2.5 }}>
-          Sign in to continue.
         </Alert>
       )}
       {formError && (
@@ -417,6 +416,7 @@ function UpdatePasswordForm({ redirectTo }) {
       return;
     }
     markAppEnter();
+    setFlash("Password updated successfully.");
     navigate(redirectTo ? decodeURIComponent(redirectTo) : "/account", { replace: true });
   }
 
@@ -538,7 +538,10 @@ export default function Auth() {
   useEffect(() => {
     if (loading || !user || !fromOAuth || enteredFromOAuth.current) return;
     enteredFromOAuth.current = true;
-    goIntoApp(navigate, redirectTo, { needsName: user.needsName });
+    goIntoApp(navigate, redirectTo, {
+      needsName: user.needsName,
+      flash: "Signed in successfully.",
+    });
   }, [loading, user, fromOAuth, navigate, redirectTo]);
 
   useEffect(() => {
@@ -615,7 +618,12 @@ export default function Auth() {
             variant="contained"
             size="large"
             fullWidth
-            onClick={() => goIntoApp(navigate, redirectTo, { needsName: user.needsName })}
+            onClick={() =>
+              goIntoApp(navigate, redirectTo, {
+                needsName: user.needsName,
+                flash: "You're verified. Welcome to ShopEZ.",
+              })
+            }
           >
             Continue shopping
           </Button>

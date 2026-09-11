@@ -3,6 +3,7 @@ import { AuthContext } from "./auth-context";
 import { authRedirectTo, isSupabaseConfigured, supabase } from "../lib/supabase";
 import { clearGoogleOAuthAttempt, markGoogleOAuthAttempt } from "../lib/oauth";
 import { remove } from "../lib/storage";
+import { toUserMessage } from "../lib/errors";
 
 // Drop the old localStorage auth keys so a previous sandbox session cannot linger.
 remove("shopez.users");
@@ -21,9 +22,12 @@ function readDisplayName(user) {
 
 function toSessionUser(user) {
   if (!user) return null;
-  const providers = (user.identities ?? [])
-    .map((identity) => identity.provider)
-    .filter(Boolean);
+  const identities = (user.identities ?? []).map((identity) => ({
+    id: identity.identity_id || identity.id,
+    provider: identity.provider,
+    raw: identity,
+  }));
+  const providers = identities.map((identity) => identity.provider).filter(Boolean);
   const uniqueProviders = [
     ...new Set(providers.length ? providers : [user.app_metadata?.provider].filter(Boolean)),
   ];
@@ -36,6 +40,7 @@ function toSessionUser(user) {
     name,
     avatarUrl: meta.avatar_url || meta.picture || null,
     createdAt: user.created_at ?? null,
+    identities,
     providers: uniqueProviders,
     canChangePassword: uniqueProviders.includes("email"),
     needsName: !name,
@@ -43,29 +48,11 @@ function toSessionUser(user) {
 }
 
 function friendlyAuthError(error) {
-  const message = error?.message ?? "Something went wrong.";
-  const normalised = message.toLowerCase();
+  return toUserMessage(error, "Something went wrong. Please try again.");
+}
 
-  if (normalised.includes("invalid login credentials")) {
-    return "Incorrect email or password.";
-  }
-  if (normalised.includes("user already registered")) {
-    return "An account with this email already exists.";
-  }
-  if (normalised.includes("email not confirmed")) {
-    return "Check your inbox for the confirmation link, then sign in.";
-  }
-  if (normalised.includes("password should be at least")) {
-    return message;
-  }
-  if (normalised.includes("new password should be different")) {
-    return "The new password matches the current one.";
-  }
-  if (normalised.includes("same password")) {
-    return "The new password matches the current one.";
-  }
-
-  return message;
+function fail(error) {
+  return { success: false, error: friendlyAuthError(error) };
 }
 
 export default function AuthProvider({ children }) {
@@ -77,11 +64,18 @@ export default function AuthProvider({ children }) {
 
     let active = true;
 
-    supabase.auth.getSession().then(({ data }) => {
-      if (!active) return;
-      setUser(toSessionUser(data.session?.user ?? null));
-      setLoading(false);
-    });
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (!active) return;
+        setUser(toSessionUser(data.session?.user ?? null));
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!active) return;
+        setUser(null);
+        setLoading(false);
+      });
 
     const {
       data: { subscription },
@@ -99,102 +93,185 @@ export default function AuthProvider({ children }) {
   const signUp = useCallback(async (email, password, { fullName } = {}) => {
     if (!supabase) return NOT_CONFIGURED;
 
-    const name = String(fullName ?? "").trim();
-    if (name.length < 2) {
-      return { success: false, error: "Enter your name (at least 2 characters)." };
+    try {
+      const name = String(fullName ?? "").trim();
+      if (name.length < 2) {
+        return { success: false, error: "Enter your name (at least 2 characters)." };
+      }
+
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim().toLowerCase(),
+        password,
+        options: {
+          data: { full_name: name },
+          emailRedirectTo: authRedirectTo("/auth?mode=login&verified=1"),
+        },
+      });
+
+      if (error) return fail(error);
+
+      if (!data.session) {
+        return { success: true, needsEmailConfirmation: true };
+      }
+
+      setUser(toSessionUser(data.user));
+      return { success: true };
+    } catch (error) {
+      return fail(error);
     }
-
-    const { data, error } = await supabase.auth.signUp({
-      email: email.trim().toLowerCase(),
-      password,
-      options: {
-        data: { full_name: name },
-        emailRedirectTo: authRedirectTo("/auth?mode=login&verified=1"),
-      },
-    });
-
-    if (error) return { success: false, error: friendlyAuthError(error) };
-
-    if (!data.session) {
-      return { success: true, needsEmailConfirmation: true };
-    }
-
-    setUser(toSessionUser(data.user));
-    return { success: true };
   }, []);
 
   const login = useCallback(async (email, password) => {
     if (!supabase) return NOT_CONFIGURED;
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: email.trim().toLowerCase(),
-      password,
-    });
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password,
+      });
 
-    if (error) return { success: false, error: friendlyAuthError(error) };
+      if (error) return fail(error);
 
-    setUser(toSessionUser(data.user));
-    return { success: true };
+      setUser(toSessionUser(data.user));
+      return { success: true };
+    } catch (error) {
+      return fail(error);
+    }
   }, []);
 
   const loginWithGoogle = useCallback(async () => {
     if (!supabase) return NOT_CONFIGURED;
 
-    markGoogleOAuthAttempt();
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: authRedirectTo("/auth?mode=login&oauth=1"),
-      },
-    });
+    try {
+      markGoogleOAuthAttempt();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: authRedirectTo("/auth?mode=login&oauth=1"),
+        },
+      });
 
-    if (error) {
+      if (error) {
+        clearGoogleOAuthAttempt();
+        return fail(error);
+      }
+      return { success: true };
+    } catch (error) {
       clearGoogleOAuthAttempt();
-      return { success: false, error: friendlyAuthError(error) };
+      return fail(error);
     }
-    return { success: true };
   }, []);
 
-  const logout = useCallback(async () => {
-    if (supabase) await supabase.auth.signOut();
-    setUser(null);
-  }, []);
-
-  const updateProfile = useCallback(async ({ fullName }) => {
+  const linkGoogle = useCallback(async () => {
     if (!supabase) return NOT_CONFIGURED;
     if (!user) return { success: false, error: "You are not signed in." };
 
-    const name = String(fullName ?? "").trim();
-    if (name.length < 2) {
-      return { success: false, error: "Enter your name (at least 2 characters)." };
+    try {
+      markGoogleOAuthAttempt();
+      const { error } = await supabase.auth.linkIdentity({
+        provider: "google",
+        options: {
+          redirectTo: authRedirectTo("/account"),
+        },
+      });
+
+      if (error) {
+        clearGoogleOAuthAttempt();
+        return fail(error);
+      }
+      return { success: true };
+    } catch (error) {
+      clearGoogleOAuthAttempt();
+      return fail(error);
     }
-
-    const { data, error } = await supabase.auth.updateUser({
-      data: { full_name: name },
-    });
-    if (error) return { success: false, error: friendlyAuthError(error) };
-
-    setUser(toSessionUser(data.user));
-    return { success: true };
   }, [user]);
+
+  const unlinkProvider = useCallback(
+    async (provider) => {
+      if (!supabase) return NOT_CONFIGURED;
+      if (!user) return { success: false, error: "You are not signed in." };
+
+      try {
+        const methods = user.providers ?? [];
+        if (methods.length <= 1) {
+          return {
+            success: false,
+            error: "Keep at least one sign-in method so you can still access this account.",
+          };
+        }
+
+        const identity = (user.identities ?? []).find((item) => item.provider === provider);
+        if (!identity?.raw) {
+          return { success: false, error: "That sign-in method is not connected." };
+        }
+
+        const { data, error } = await supabase.auth.unlinkIdentity(identity.raw);
+        if (error) return fail(error);
+
+        setUser(toSessionUser(data.user ?? null));
+        return { success: true };
+      } catch (error) {
+        return fail(error);
+      }
+    },
+    [user]
+  );
+
+  const logout = useCallback(async () => {
+    try {
+      if (supabase) await supabase.auth.signOut();
+    } catch {
+      // Still clear local session so the UI recovers.
+    }
+    setUser(null);
+  }, []);
+
+  const updateProfile = useCallback(
+    async ({ fullName }) => {
+      if (!supabase) return NOT_CONFIGURED;
+      if (!user) return { success: false, error: "You are not signed in." };
+
+      try {
+        const name = String(fullName ?? "").trim();
+        if (name.length < 2) {
+          return { success: false, error: "Enter your name (at least 2 characters)." };
+        }
+
+        const { data, error } = await supabase.auth.updateUser({
+          data: { full_name: name },
+        });
+        if (error) return fail(error);
+
+        setUser(toSessionUser(data.user));
+        return { success: true };
+      } catch (error) {
+        return fail(error);
+      }
+    },
+    [user]
+  );
 
   const changePassword = useCallback(
     async (currentPassword, nextPassword) => {
       if (!supabase) return NOT_CONFIGURED;
       if (!user?.email) return { success: false, error: "You are not signed in." };
 
-      const { error: reauthError } = await supabase.auth.signInWithPassword({
-        email: user.email,
-        password: currentPassword,
-      });
-      if (reauthError) {
-        return { success: false, error: "Your current password is not correct." };
+      try {
+        const { error: reauthError } = await supabase.auth.signInWithPassword({
+          email: user.email,
+          password: currentPassword,
+        });
+        if (reauthError) {
+          return { success: false, error: "Your current password is not correct." };
+        }
+
+        const { error } = await supabase.auth.updateUser({ password: nextPassword });
+        if (error) return fail(error);
+
+        return { success: true };
+      } catch (error) {
+        return fail(error);
       }
-
-      const { error } = await supabase.auth.updateUser({ password: nextPassword });
-      if (error) return { success: false, error: friendlyAuthError(error) };
-
-      return { success: true };
     },
     [user]
   );
@@ -202,41 +279,57 @@ export default function AuthProvider({ children }) {
   const requestPasswordReset = useCallback(async (email) => {
     if (!supabase) return NOT_CONFIGURED;
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-      redirectTo: authRedirectTo("/auth?mode=update-password"),
-    });
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+        redirectTo: authRedirectTo("/auth?mode=update-password"),
+      });
 
-    if (error) return { success: false, error: friendlyAuthError(error) };
-    return { success: true };
+      if (error) return fail(error);
+      return { success: true };
+    } catch (error) {
+      return fail(error);
+    }
   }, []);
 
   const updatePassword = useCallback(async (nextPassword) => {
     if (!supabase) return NOT_CONFIGURED;
 
-    const { error } = await supabase.auth.updateUser({ password: nextPassword });
-    if (error) return { success: false, error: friendlyAuthError(error) };
+    try {
+      const { error } = await supabase.auth.updateUser({ password: nextPassword });
+      if (error) return fail(error);
 
-    return { success: true };
+      return { success: true };
+    } catch (error) {
+      return fail(error);
+    }
   }, []);
 
   const deleteAccount = useCallback(async () => {
     if (!supabase) return NOT_CONFIGURED;
     if (!user?.email) return { success: false, error: "You are not signed in." };
 
-    const { error } = await supabase.rpc("delete_own_account");
-    if (error) {
-      return {
-        success: false,
-        error:
-          error.message?.includes("Could not find the function") || error.code === "PGRST202"
-            ? "Account deletion is not set up yet. Run supabase/setup.sql in the Supabase SQL editor, then try again."
-            : friendlyAuthError(error),
-      };
-    }
+    try {
+      const { error } = await supabase.rpc("delete_own_account");
+      if (error) {
+        return {
+          success: false,
+          error:
+            error.message?.includes("Could not find the function") || error.code === "PGRST202"
+              ? "Account deletion isn’t set up yet. Contact support or try again later."
+              : friendlyAuthError(error),
+        };
+      }
 
-    await supabase.auth.signOut();
-    setUser(null);
-    return { success: true };
+      try {
+        await supabase.auth.signOut();
+      } catch {
+        // ignore
+      }
+      setUser(null);
+      return { success: true };
+    } catch (error) {
+      return fail(error);
+    }
   }, [user]);
 
   const value = useMemo(
@@ -247,6 +340,8 @@ export default function AuthProvider({ children }) {
       signUp,
       login,
       loginWithGoogle,
+      linkGoogle,
+      unlinkProvider,
       logout,
       updateProfile,
       changePassword,
@@ -260,6 +355,8 @@ export default function AuthProvider({ children }) {
       signUp,
       login,
       loginWithGoogle,
+      linkGoogle,
+      unlinkProvider,
       logout,
       updateProfile,
       changePassword,
