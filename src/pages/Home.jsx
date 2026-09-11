@@ -1,181 +1,160 @@
 import { useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link as RouterLink } from "react-router-dom";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Container from "@mui/material/Container";
+import IconButton from "@mui/material/IconButton";
+import Paper from "@mui/material/Paper";
+import Stack from "@mui/material/Stack";
+import ToggleButton from "@mui/material/ToggleButton";
+import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
+import Typography from "@mui/material/Typography";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import CategoryTiles from "../components/CategoryTiles";
+import HomeSkeleton from "../components/HomeSkeleton";
 import ProductCard from "../components/ProductCard";
-import { getProducts } from "../data/products";
-import { useCart } from "../context/CartContext";
+import ProductGrid from "../components/ProductGrid";
+import SectionHeader from "../components/SectionHeader";
+import StorefrontMasthead from "../components/StorefrontMasthead";
+import { consumeAppEnter, useWarmReveal } from "../hooks/useWarmReveal";
+import { getCategories, getProductById, getProducts } from "../data/products";
 
-const GRID_OPTIONS = [2, 3, 4];
+const products = getProducts();
+const categories = getCategories();
 
-function GridToggle({ value, onChange }) {
-  return (
-    <div className="grid-toggle">
-      {GRID_OPTIONS.map((cols) => (
-        <button
-          key={cols}
-          type="button"
-          className={`grid-toggle-btn ${value === cols ? "active" : ""}`}
-          onClick={() => onChange(cols)}
-          aria-label={`Show ${cols} columns`}
-          title={`${cols} columns`}
-        >
-          <span className="grid-icon">
-            {Array.from({ length: cols }).map((_, i) => (
-              <span key={i} className="grid-icon-cell" />
-            ))}
-          </span>
-        </button>
-      ))}
-    </div>
-  );
+// Chosen for strong product photography. Topping up from the catalogue keeps the
+// layout intact if any of these ids are ever removed.
+function pick(ids, count) {
+  const chosen = ids.map(getProductById).filter(Boolean);
+  if (chosen.length >= count) return chosen.slice(0, count);
+  const filler = products.filter((product) => !chosen.includes(product));
+  return [...chosen, ...filler.slice(0, count - chosen.length)];
 }
 
-function HeroCard({ product }) {
-  const { addToCart, cartItems } = useCart();
-  const inCart = cartItems.find((item) => item.id === product.id);
+const spotlight = pick([3, 40, 4], 3);
+const quickPicks = pick([11, 31, 24], 3);
 
-  return (
-    <div className="hero-card">
-      <Link to={`/products/${product.id}`} className="hero-card-link">
-        <img
-          src={product.image}
-          alt={product.name}
-          className="hero-card-image"
-        />
-      </Link>
-      <div className="hero-card-body">
-        <Link
-          to={`/products/${product.id}`}
-          className="hero-card-name"
-        >
-          {product.name}
-        </Link>
-        <p className="hero-card-price">${product.price}</p>
-        <div className="hero-card-actions">
-          <button
-            className="btn btn-primary btn-small"
-            onClick={() => addToCart(product.id)}
-          >
-            Add to Cart{inCart ? ` (${inCart.quantity})` : ""}
-          </button>
-          <Link
-            to={`/products/${product.id}`}
-            className="btn btn-secondary btn-small"
-          >
-            Details
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
-}
+const mastheadIds = new Set([...spotlight, ...quickPicks].map((product) => product.id));
+const popular = products.filter((product) => !mastheadIds.has(product.id)).slice(0, 8);
+
+const popularIds = new Set(popular.map((product) => product.id));
+const remaining = products.filter(
+  (product) => !mastheadIds.has(product.id) && !popularIds.has(product.id)
+);
+
+const CARD_SCROLL_STEP = 344;
 
 export default function Home() {
-  const products = getProducts();
-  const popularProducts = [products[0], products[2], products[3], products[6], products[9], products[10], products[13], products[17]];
-  const featuredProducts = [products[1], products[4], products[5], products[7], products[11], products[14]];
-  const remainingProducts = products.filter((p) => !popularProducts.includes(p) && !featuredProducts.includes(p));
-  const scrollRef = useRef(null);
-  const [featuredCols, setFeaturedCols] = useState(3);
-  const [moreCols, setMoreCols] = useState(4);
+  const scrollerRef = useRef(null);
+  const [columns, setColumns] = useState(4);
+  const [fromAuth] = useState(() => consumeAppEnter());
+  const ready = useWarmReveal({ fromAuth });
 
-  function scroll(direction) {
-    if (!scrollRef.current) return;
-    const px = direction === "left" ? -340 : 340;
-    scrollRef.current.scrollBy({ left: px, behavior: "smooth" });
+  function scrollBy(direction) {
+    scrollerRef.current?.scrollBy({
+      left: direction * CARD_SCROLL_STEP,
+      behavior: "smooth",
+    });
+  }
+
+  if (!ready) {
+    return <HomeSkeleton />;
   }
 
   return (
-    <div className="page">
-      <div className="hero-section">
-        <div className="hero-section-head">
-          <div>
-            <h2 className="hero-section-title">Popular Right Now</h2>
-            <p className="hero-section-sub">Top picks from our store</p>
-          </div>
-          <div className="hero-section-arrows">
-            <button
-              type="button"
-              className="hero-arrow"
-              onClick={() => scroll("left")}
-              aria-label="Scroll left"
+    <>
+      <StorefrontMasthead spotlight={spotlight} quickPicks={quickPicks} />
+
+      <Container maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}>
+        <Stack spacing={{ xs: 5, md: 7 }}>
+          <Box component="section">
+            <SectionHeader
+              title="Popular right now"
+              subtitle="The parts moving fastest out of the warehouse this week"
+              action={
+                <Stack direction="row" spacing={1} sx={{ display: { xs: "none", sm: "flex" } }}>
+                  <IconButton onClick={() => scrollBy(-1)} aria-label="Scroll left" size="small">
+                    <ChevronLeftIcon />
+                  </IconButton>
+                  <IconButton onClick={() => scrollBy(1)} aria-label="Scroll right" size="small">
+                    <ChevronRightIcon />
+                  </IconButton>
+                </Stack>
+              }
+            />
+            <Box
+              ref={scrollerRef}
+              sx={{
+                display: "grid",
+                gridAutoFlow: "column",
+                gridAutoColumns: { xs: "78%", sm: "44%", md: "26%" },
+                gap: 2.5,
+                overflowX: "auto",
+                scrollSnapType: "x mandatory",
+                pb: 1.5,
+                "& > *": { scrollSnapAlign: "start" },
+              }}
             >
-              &#8249;
-            </button>
-            <button
-              type="button"
-              className="hero-arrow"
-              onClick={() => scroll("right")}
-              aria-label="Scroll right"
-            >
-              &#8250;
-            </button>
-          </div>
-        </div>
-        <div className="hero-scroll-wrapper">
-          <div className="hero-scroll-track" ref={scrollRef}>
-            {popularProducts.map((product) => (
-              <HeroCard product={product} key={product.id} />
-            ))}
-          </div>
-        </div>
-      </div>
+              {popular.map((product) => (
+                <ProductCard key={product.id} product={product} imageHeight={170} />
+              ))}
+            </Box>
+          </Box>
 
-      <div className="container" id="why-us">
-        <div className="home-info-grid">
-          <div className="home-info-card">
-            <h3>Fast Shipping</h3>
-            <p>Dispatch within 24 hours on most items.</p>
-          </div>
-          <div className="home-info-card">
-            <h3>Verified Products</h3>
-            <p>Only high-quality, tested tech accessories and parts.</p>
-          </div>
-          <div className="home-info-card">
-            <h3>Secure Payments</h3>
-            <p>Protected checkout and reliable order tracking.</p>
-          </div>
-        </div>
-      </div>
+          <Box component="section">
+            <SectionHeader title="Shop by category" />
+            <CategoryTiles />
+          </Box>
 
-      <div className="container">
-        <div className="browse-all-banner">
-          <div>
-            <h2 className="browse-all-title">Browse Our Full Catalog</h2>
-            <p className="browse-all-sub">
-              {products.length} products across {new Set(products.map((p) => p.category)).size} categories
-            </p>
-          </div>
-          <Link to="/browse" className="btn btn-primary">
-            View All Products
-          </Link>
-        </div>
-      </div>
+          <Box component="section">
+            <SectionHeader
+              title="More to explore"
+              subtitle={`${remaining.length} more products in the catalogue`}
+              action={
+                <ToggleButtonGroup
+                  size="small"
+                  exclusive
+                  value={columns}
+                  onChange={(_, value) => value && setColumns(value)}
+                  aria-label="Products per row"
+                  sx={{ display: { xs: "none", md: "inline-flex" } }}
+                >
+                  {[2, 3, 4].map((count) => (
+                    <ToggleButton key={count} value={count} aria-label={`${count} columns`}>
+                      {count}
+                    </ToggleButton>
+                  ))}
+                </ToggleButtonGroup>
+              }
+            />
+            <ProductGrid products={remaining} columns={columns} />
+          </Box>
 
-      <div className="container">
-        <div className="section-header">
-          <h2 className="page-title" id="catalog">
-            Featured Products
-          </h2>
-          <GridToggle value={featuredCols} onChange={setFeaturedCols} />
-        </div>
-        <div className={`product-grid cols-${featuredCols} home-featured-grid`}>
-          {featuredProducts.map((product) => (
-            <ProductCard product={product} key={product.id} />
-          ))}
-        </div>
-      </div>
-
-      <div className="container home-more-products">
-        <div className="section-header">
-          <h2 className="page-title">More to Explore</h2>
-          <GridToggle value={moreCols} onChange={setMoreCols} />
-        </div>
-        <div className={`product-grid cols-${moreCols}`}>
-          {remainingProducts.map((product) => (
-            <ProductCard product={product} key={product.id} />
-          ))}
-        </div>
-      </div>
-    </div>
+          <Paper
+            variant="outlined"
+            sx={{
+              p: { xs: 2.5, md: 4 },
+              display: "flex",
+              flexDirection: { xs: "column", sm: "row" },
+              alignItems: { sm: "center" },
+              justifyContent: "space-between",
+              gap: 2,
+            }}
+          >
+            <Box>
+              <Typography variant="h2">Browse the full catalogue</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                {products.length} products across {categories.length} categories, filterable by
+                price and category.
+              </Typography>
+            </Box>
+            <Button component={RouterLink} to="/browse" variant="contained" size="large">
+              View all products
+            </Button>
+          </Paper>
+        </Stack>
+      </Container>
+    </>
   );
 }

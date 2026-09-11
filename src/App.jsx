@@ -1,37 +1,69 @@
-import { Routes, Route } from "react-router-dom";
-import Home from "./pages/Home";
-import Auth from "./pages/Auth";
-import Checkout from "./pages/Checkout";
-import Payment from "./pages/Payment";
-import Browse from "./pages/Browse";
+import { Suspense, lazy } from "react";
+import { Navigate, Route, Routes } from "react-router-dom";
+import Box from "@mui/material/Box";
+import ColorModeProvider from "./context/ColorModeProvider";
+import AuthProvider from "./context/AuthProvider";
+import CartProvider from "./context/CartProvider";
 import Navbar from "./components/Navbar";
+import SiteFooter from "./components/SiteFooter";
+import RequireAuth from "./components/RequireAuth";
+import ScrollToTop from "./components/ScrollToTop";
+import PageEnter from "./components/PageEnter";
+import RouteFallback from "./components/RouteFallback";
+import Home from "./pages/Home";
 
-import "./App.css";
-import AuthProvider from "./context/AuthContext";
-import ProductDetails from "./pages/ProductDetails";
-import CartProvider from "./context/CartContext";
-import ThemeProvider from "./context/ThemeContext";
+// Home is the usual entry point, so it ships in the initial bundle; the rest load
+// on navigation.
+const Browse = lazy(() => import("./pages/Browse"));
+const ProductDetails = lazy(() => import("./pages/ProductDetails"));
+const Cart = lazy(() => import("./pages/Cart"));
+const Checkout = lazy(() => import("./pages/Checkout"));
+const Auth = lazy(() => import("./pages/Auth"));
+const Account = lazy(() => import("./pages/Account"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
-function App() {
+export default function App() {
   return (
-    <ThemeProvider>
+    <ColorModeProvider>
       <AuthProvider>
         <CartProvider>
-          <div className="app">
-            <Navbar />
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/checkout" element={<Checkout />} />
-              <Route path="/payment" element={<Payment />} />
-              <Route path="/browse" element={<Browse />} />
-              <Route path="/products/:id" element={<ProductDetails />} />
-            </Routes>
-          </div>
+          <ScrollToTop />
+          <Navbar />
+          <Box component="main" sx={{ flexGrow: 1 }}>
+            <Suspense fallback={<RouteFallback />}>
+              <PageEnter>
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/browse" element={<Browse />} />
+                  <Route path="/products/:id" element={<ProductDetails />} />
+                  <Route path="/cart" element={<Cart />} />
+                  <Route
+                    path="/checkout"
+                    element={
+                      <RequireAuth>
+                        <Checkout />
+                      </RequireAuth>
+                    }
+                  />
+                  <Route
+                    path="/account"
+                    element={
+                      <RequireAuth>
+                        <Account />
+                      </RequireAuth>
+                    }
+                  />
+                  <Route path="/auth" element={<Auth />} />
+                  {/* Kept so bookmarks from before the cart/checkout rename still resolve. */}
+                  <Route path="/payment" element={<Navigate to="/checkout" replace />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </PageEnter>
+            </Suspense>
+          </Box>
+          <SiteFooter />
         </CartProvider>
       </AuthProvider>
-    </ThemeProvider>
+    </ColorModeProvider>
   );
 }
-
-export default App;

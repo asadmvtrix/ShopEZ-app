@@ -1,114 +1,372 @@
-import { Link, useNavigate } from "react-router-dom";
-import { useCart } from "../context/CartContext";
+import { useState } from "react";
+import { Link as RouterLink } from "react-router-dom";
+import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import CircularProgress from "@mui/material/CircularProgress";
+import Container from "@mui/material/Container";
+import Divider from "@mui/material/Divider";
+import InputAdornment from "@mui/material/InputAdornment";
+import Paper from "@mui/material/Paper";
+import Stack from "@mui/material/Stack";
+import Step from "@mui/material/Step";
+import StepLabel from "@mui/material/StepLabel";
+import Stepper from "@mui/material/Stepper";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutlined";
+import CreditCardRoundedIcon from "@mui/icons-material/CreditCardRounded";
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+import CardBrandIcon from "../components/CardBrandIcon";
+import OrderSummary from "../components/OrderSummary";
+import { useCart } from "../context/cart-context";
+import { useAuth } from "../context/auth-context";
+import { usePayment } from "../hooks/usePayment";
+import { calculateTotals, formatPrice } from "../config/store";
+import { MONO } from "../theme";
+import {
+  ACCEPTED_BRAND_IDS,
+  detectBrand,
+  digitsOnly,
+  formatCardNumber,
+  formatExpiry,
+  validateCard,
+} from "../lib/card";
+
+const STEPS = ["Cart", "Payment", "Confirmation"];
+
+// The cc-* autocomplete tokens tell the browser to offer a saved card. That is right
+// against a real gateway and wrong here: the sandbox posts to a placeholder endpoint,
+// so a real card should never be pulled into it. Over plain http Chrome also parks a
+// "filling is disabled, no secure connection" bubble over the form. Both go away when
+// the tokens are only emitted once a payment endpoint is actually configured.
+const SANDBOX = !import.meta.env.VITE_PAYMENT_API_URL;
+const cardField = (token) => (SANDBOX ? "off" : token);
+
+function SectionLabel({ children, action }) {
+  return (
+    <Stack
+      direction="row"
+      spacing={2}
+      sx={{ alignItems: "center", justifyContent: "space-between", mb: 1.25 }}
+    >
+      <Typography variant="subtitle2" color="text.secondary">
+        {children}
+      </Typography>
+      {action}
+    </Stack>
+  );
+}
+
+function Receipt({ receipt }) {
+  return (
+    <Container maxWidth="sm" sx={{ py: { xs: 5, md: 8 } }}>
+      <Paper variant="outlined" sx={{ p: { xs: 3, md: 5 }, textAlign: "center" }}>
+        <CheckCircleOutlineIcon color="success" sx={{ fontSize: 56 }} />
+        <Typography variant="h1" sx={{ mt: 1.5 }}>
+          Payment approved
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          Your order is confirmed. Keep the reference below if you need to get in touch.
+        </Typography>
+
+        <Stack spacing={1.5} sx={{ my: 4, textAlign: "left" }}>
+          <Divider />
+          {[
+            ["Reference", receipt.reference],
+            ["Amount", formatPrice(receipt.amount)],
+            ["Paid with", `${receipt.brand} ending ${receipt.last4}`],
+            ["Date", new Date(receipt.paidAt).toLocaleString()],
+          ].map(([label, value]) => (
+            <Stack
+              key={label}
+              direction="row"
+              spacing={2}
+              sx={{ justifyContent: "space-between" }}
+            >
+              <Typography variant="body2" color="text.secondary">
+                {label}
+              </Typography>
+              <Typography variant="body2" sx={{ fontFamily: MONO, textAlign: "right" }}>
+                {value}
+              </Typography>
+            </Stack>
+          ))}
+          <Divider />
+        </Stack>
+
+        <Alert severity="info" sx={{ textAlign: "left", mb: 3 }}>
+          This is a sandbox checkout. No card was charged and no confirmation email is sent.
+        </Alert>
+
+        <Button component={RouterLink} to="/browse" variant="contained" size="large">
+          Continue shopping
+        </Button>
+      </Paper>
+    </Container>
+  );
+}
 
 export default function Checkout() {
-  const {
-    getCartItemsWithProducts,
-    updateQuantity,
-    removeFromCart,
-    getCartTotal,
-  } = useCart();
-  const cartItems = getCartItemsWithProducts();
-  const navigate = useNavigate();
-  const total = getCartTotal();
+  const { items, subtotal, clearCart } = useCart();
+  const { user } = useAuth();
+  const { pay, error, receipt, isProcessing, isComplete } = usePayment();
 
-  if (cartItems.length === 0) {
+  const [fields, setFields] = useState({ name: "", number: "", expiry: "", cvv: "" });
+  const [fieldError, setFieldError] = useState(null);
+
+  const brand = detectBrand(fields.number);
+  const { total } = calculateTotals(subtotal);
+
+  function setField(key, value) {
+    setFields((current) => ({ ...current, [key]: value }));
+    if (fieldError?.field === key) setFieldError(null);
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+
+    const problem = validateCard(fields);
+    if (problem) {
+      setFieldError(problem);
+      return;
+    }
+    setFieldError(null);
+
+    const digits = digitsOnly(fields.number);
+    const result = await pay({
+      email: user.email,
+      amount: Number(total.toFixed(2)),
+      lines: items.map((item) => ({
+        sku: item.id,
+        name: item.product.name,
+        quantity: item.quantity,
+        unitPrice: item.product.price,
+      })),
+      // Only the brand and last four digits leave the form; the PAN and CVV are dropped.
+      card: { brand: brand.label, last4: digits.slice(-4), expiry: fields.expiry },
+      placedAt: new Date().toISOString(),
+    });
+
+    if (result.success) {
+      clearCart();
+    }
+  }
+
+  if (isComplete && receipt) {
+    return <Receipt receipt={receipt} />;
+  }
+
+  if (items.length === 0) {
     return (
-      <div className="page">
-        <div className="container">
-          <h1 className="page-title">Shopping Cart</h1>
-          <div className="empty-cart">
-            <p>Your cart is empty.</p>
-            <Link to="/browse" className="btn btn-primary">
-              Browse Products
-            </Link>
-          </div>
-        </div>
-      </div>
+      <Container maxWidth="sm" sx={{ py: { xs: 5, md: 8 } }}>
+        <Paper variant="outlined" sx={{ p: { xs: 4, md: 6 }, textAlign: "center" }}>
+          {/* Still the page heading, just not at page-title size. */}
+          <Typography variant="h3" component="h1" gutterBottom>
+            There is nothing to pay for
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            Add something to your cart before checking out.
+          </Typography>
+          <Button component={RouterLink} to="/browse" variant="contained">
+            Browse products
+          </Button>
+        </Paper>
+      </Container>
     );
   }
 
-  return (
-    <div className="page">
-      <div className="container">
-        <h1 className="page-title">Shopping Cart</h1>
-        <div className="cart-layout">
-          <div className="cart-items-section">
-            {cartItems.map((item) => (
-              <div className="cart-item" key={item.id}>
-                <img
-                  src={item.product.image}
-                  alt={item.product.name}
-                  className="cart-item-image"
-                />
-                <div className="cart-item-details">
-                  <Link
-                    to={`/products/${item.id}`}
-                    className="cart-item-name"
-                  >
-                    {item.product.name}
-                  </Link>
-                  <p className="cart-item-price">${item.product.price}</p>
-                  <div className="cart-item-controls">
-                    <div className="quantity-controls">
-                      <button
-                        className="quantity-btn"
-                        onClick={() =>
-                          updateQuantity(item.id, item.quantity - 1)
-                        }
-                      >
-                        -
-                      </button>
-                      <span className="quantity-value">{item.quantity}</span>
-                      <button
-                        className="quantity-btn"
-                        onClick={() =>
-                          updateQuantity(item.id, item.quantity + 1)
-                        }
-                      >
-                        +
-                      </button>
-                    </div>
-                    <button
-                      className="cart-item-remove"
-                      onClick={() => removeFromCart(item.id)}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+  const helper = (field) => (fieldError?.field === field ? fieldError.message : " ");
+  const invalid = (field) => fieldError?.field === field;
 
-          <div className="cart-summary-section">
-            <div className="cart-summary">
-              <h3 className="cart-summary-title">Order Summary</h3>
-              <div className="cart-summary-rows">
-                {cartItems.map((item) => (
-                  <div className="cart-summary-row" key={item.id}>
-                    <span>
-                      {item.product.name} x{item.quantity}
-                    </span>
-                    <span>${(item.product.price * item.quantity).toFixed(2)}</span>
-                  </div>
+  return (
+    <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 } }}>
+      <Typography variant="h1" gutterBottom>
+        Checkout
+      </Typography>
+
+      <Stepper
+        activeStep={1}
+        sx={{
+          maxWidth: 520,
+          my: 3,
+          // "Confirmation" pushes the last step past the edge on a 320px screen.
+          "& .MuiStep-root": { px: { xs: 0.25, sm: 1 } },
+          "& .MuiStepLabel-label": { fontSize: { xs: "0.7rem", sm: "0.875rem" } },
+        }}
+      >
+        {STEPS.map((step) => (
+          <Step key={step}>
+            <StepLabel>{step}</StepLabel>
+          </Step>
+        ))}
+      </Stepper>
+
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: { xs: "1fr", md: "1fr 340px" },
+          gap: { xs: 3, md: 4 },
+          alignItems: "start",
+        }}
+      >
+        <Box component="form" onSubmit={handleSubmit} noValidate autoComplete={SANDBOX ? "off" : "on"}>
+          <Alert severity="info" variant="outlined" sx={{ mb: 3 }}>
+            Sandbox checkout, so nothing is charged. Use{" "}
+            <Box component="span" sx={{ fontFamily: MONO }}>
+              4242 4242 4242 4242
+            </Box>{" "}
+            to approve, or a number ending 0000 or 1111 to see a decline.
+          </Alert>
+
+          <SectionLabel>Contact</SectionLabel>
+          <TextField
+            label="Email"
+            value={user.email}
+            helperText="The receipt is issued to your account email."
+            slotProps={{ input: { readOnly: true } }}
+            sx={{ mb: 3 }}
+          />
+
+          <SectionLabel
+            action={
+              <Stack direction="row" spacing={0.5}>
+                {ACCEPTED_BRAND_IDS.map((accepted) => (
+                  <CardBrandIcon
+                    key={accepted}
+                    brand={accepted}
+                    dimmed={brand.id !== "unknown" && brand.id !== accepted}
+                  />
                 ))}
-              </div>
-              <div className="cart-summary-divider" />
-              <div className="cart-summary-row cart-summary-total">
-                <span>Total</span>
-                <span>${total.toFixed(2)}</span>
-              </div>
-              <button
-                className="btn btn-primary btn-block"
-                onClick={() => navigate("/payment")}
-              >
-                Proceed to Payment
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+              </Stack>
+            }
+          >
+            Payment
+          </SectionLabel>
+
+          <Paper variant="outlined" sx={{ p: { xs: 2, sm: 2.5 } }}>
+            <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 2 }}>
+              <CreditCardRoundedIcon fontSize="small" sx={{ color: "text.secondary" }} />
+              <Typography variant="h5">Card details</Typography>
+            </Stack>
+
+            <Stack spacing={1}>
+              <TextField
+                id="card-number"
+                label="Card number"
+                autoComplete={cardField("cc-number")}
+                inputMode="numeric"
+                placeholder="1234 1234 1234 1234"
+                value={fields.number}
+                onChange={(event) => setField("number", formatCardNumber(event.target.value))}
+                error={invalid("number")}
+                helperText={helper("number")}
+                slotProps={{
+                  htmlInput: { sx: { fontFamily: MONO, letterSpacing: "0.04em" } },
+                  input: {
+                    endAdornment: brand.id === "unknown" ? null : (
+                      <InputAdornment position="end">
+                        <CardBrandIcon brand={brand.id} title={brand.label} />
+                      </InputAdornment>
+                    ),
+                  },
+                }}
+              />
+
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={{ xs: 1, sm: 2 }}>
+                <TextField
+                  id="card-expiry"
+                  label="Expiry date"
+                  autoComplete={cardField("cc-exp")}
+                  inputMode="numeric"
+                  placeholder="MM/YY"
+                  value={fields.expiry}
+                  onChange={(event) => setField("expiry", formatExpiry(event.target.value))}
+                  error={invalid("expiry")}
+                  helperText={helper("expiry")}
+                  slotProps={{ htmlInput: { sx: { fontFamily: MONO } } }}
+                />
+                <TextField
+                  id="card-cvc"
+                  label="Security code"
+                  autoComplete={cardField("cc-csc")}
+                  inputMode="numeric"
+                  type="password"
+                  placeholder={"•".repeat(brand.cvvLength)}
+                  value={fields.cvv}
+                  onChange={(event) =>
+                    setField("cvv", digitsOnly(event.target.value).slice(0, brand.cvvLength))
+                  }
+                  error={invalid("cvv")}
+                  helperText={
+                    invalid("cvv")
+                      ? fieldError.message
+                      : `${brand.cvvLength} digits on the ${
+                          brand.id === "amex" ? "front" : "back"
+                        } of the card`
+                  }
+                  slotProps={{ htmlInput: { sx: { fontFamily: MONO } } }}
+                />
+              </Stack>
+
+              <TextField
+                id="card-name"
+                label="Name on card"
+                autoComplete={cardField("cc-name")}
+                value={fields.name}
+                onChange={(event) => setField("name", event.target.value)}
+                error={invalid("name")}
+                helperText={helper("name")}
+              />
+            </Stack>
+          </Paper>
+
+          {error && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              {error}
+            </Alert>
+          )}
+
+          <Button
+            type="submit"
+            variant="contained"
+            color="secondary"
+            size="large"
+            fullWidth
+            disabled={isProcessing}
+            startIcon={
+              isProcessing ? <CircularProgress size={18} color="inherit" /> : <LockOutlinedIcon />
+            }
+            sx={{ mt: 3 }}
+          >
+            {isProcessing ? "Authorising" : `Pay ${formatPrice(total)}`}
+          </Button>
+
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ display: "block", mt: 1.5, textAlign: "center" }}
+          >
+            Card details are validated in your browser. Only the brand and last four digits are
+            ever sent.
+          </Typography>
+        </Box>
+
+        <Box
+          sx={{
+            position: { md: "sticky" },
+            top: 88,
+            maxHeight: { md: "calc(100vh - 112px)" },
+            overflowY: { md: "auto" },
+          }}
+        >
+          <OrderSummary items={items} itemised>
+            <Button component={RouterLink} to="/cart" fullWidth>
+              Back to cart
+            </Button>
+          </OrderSummary>
+        </Box>
+      </Box>
+    </Container>
   );
 }

@@ -1,260 +1,441 @@
-import { useMemo, useState, useEffect } from "react";
-import { Link, useSearchParams } from "react-router-dom";
-import { getProducts } from "../data/products";
-import { useCart } from "../context/CartContext";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Chip from "@mui/material/Chip";
+import Container from "@mui/material/Container";
+import Drawer from "@mui/material/Drawer";
+import FormControl from "@mui/material/FormControl";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import IconButton from "@mui/material/IconButton";
+import InputAdornment from "@mui/material/InputAdornment";
+import InputLabel from "@mui/material/InputLabel";
+import MenuItem from "@mui/material/MenuItem";
+import Paper from "@mui/material/Paper";
+import Radio from "@mui/material/Radio";
+import RadioGroup from "@mui/material/RadioGroup";
+import Select from "@mui/material/Select";
+import Stack from "@mui/material/Stack";
+import TextField from "@mui/material/TextField";
+import ToggleButton from "@mui/material/ToggleButton";
+import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
+import Typography from "@mui/material/Typography";
+import CloseIcon from "@mui/icons-material/Close";
+import FilterListIcon from "@mui/icons-material/FilterList";
+import SearchIcon from "@mui/icons-material/Search";
+import ProductCard from "../components/ProductCard";
+import ProductGridSkeleton from "../components/ProductGridSkeleton";
+import { getCategories, getProducts } from "../data/products";
+import { formatPrice } from "../config/store";
+import { consumeAppEnter, useWarmReveal } from "../hooks/useWarmReveal";
+
+const SEARCH_DEBOUNCE_MS = 500;
+
+const allProducts = getProducts();
+const categories = getCategories();
 
 const SORT_OPTIONS = [
   { value: "featured", label: "Featured" },
-  { value: "price-low", label: "Price: Low to High" },
-  { value: "price-high", label: "Price: High to Low" },
-  { value: "name-az", label: "Name: A to Z" },
-  { value: "name-za", label: "Name: Z to A" },
+  { value: "price-asc", label: "Price: low to high" },
+  { value: "price-desc", label: "Price: high to low" },
+  { value: "name-asc", label: "Name: A to Z" },
 ];
 
 const PRICE_RANGES = [
-  { label: "All Prices", min: 0, max: Infinity },
-  { label: "Under $100", min: 0, max: 100 },
-  { label: "$100 - $250", min: 100, max: 250 },
-  { label: "$250 - $500", min: 250, max: 500 },
-  { label: "$500 - $1000", min: 500, max: 1000 },
-  { label: "Over $1000", min: 1000, max: Infinity },
+  { id: "all", label: "Any price", min: 0, max: Infinity },
+  { id: "under-100", label: "Under $100", min: 0, max: 100 },
+  { id: "100-250", label: "$100 to $250", min: 100, max: 250 },
+  { id: "250-500", label: "$250 to $500", min: 250, max: 500 },
+  { id: "500-1000", label: "$500 to $1,000", min: 500, max: 1000 },
+  { id: "over-1000", label: "Over $1,000", min: 1000, max: Infinity },
 ];
 
+const comparators = {
+  "price-asc": (a, b) => a.price - b.price,
+  "price-desc": (a, b) => b.price - a.price,
+  "name-asc": (a, b) => a.name.localeCompare(b.name),
+};
+
+const categoryCounts = categories.reduce((counts, category) => {
+  counts[category] = allProducts.filter((product) => product.category === category).length;
+  return counts;
+}, {});
+
 export default function Browse() {
-  const allProducts = getProducts();
-  const { addToCart, cartItems } = useCart();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [columns, setColumns] = useState(3);
+  const [fromAuth] = useState(() => consumeAppEnter());
+  const ready = useWarmReveal({ fromAuth });
 
-  const [selectedCategory, setSelectedCategory] = useState("All");
-  const [selectedPrice, setSelectedPrice] = useState(0);
-  const [sortBy, setSortBy] = useState("featured");
-  const [searchQuery, setSearchQuery] = useState("");
+  // The URL is the source of truth so category links, sorting and search survive
+  // a refresh or a shared link.
+  const category = searchParams.get("category") ?? "All";
+  const search = searchParams.get("q") ?? "";
+  const sort = searchParams.get("sort") ?? "featured";
+  const priceId = searchParams.get("price") ?? "all";
+  const priceRange = PRICE_RANGES.find((range) => range.id === priceId) ?? PRICE_RANGES[0];
 
-  // Keep the sidebar category in sync with ?category= in the URL (navbar links)
+  // Local draft so typing stays smooth; the URL (and results) update after a pause
+  // so slower typists are not cut off mid-word.
+  const [searchDraft, setSearchDraft] = useState(search);
+
   useEffect(() => {
-    const category = searchParams.get("category");
-    if (category) {
-      setSelectedCategory(category);
-    }
-  }, [searchParams]);
+    setSearchDraft(search);
+  }, [search]);
 
-  const categories = useMemo(() => {
-    const cats = [...new Set(allProducts.map((p) => p.category))].sort();
-    return ["All", ...cats];
-  }, [allProducts]);
+  useEffect(() => {
+    if (searchDraft === search) return undefined;
 
-  const filteredProducts = useMemo(() => {
-    let result = [...allProducts];
+    const timer = setTimeout(() => {
+      const next = new URLSearchParams(searchParams);
+      const trimmed = searchDraft.trim();
+      if (trimmed) {
+        next.set("q", trimmed);
+      } else {
+        next.delete("q");
+      }
+      setSearchParams(next, { replace: true });
+    }, SEARCH_DEBOUNCE_MS);
 
-    if (selectedCategory !== "All") {
-      result = result.filter((p) => p.category === selectedCategory);
-    }
+    return () => clearTimeout(timer);
+  }, [searchDraft, search, searchParams, setSearchParams]);
 
-    const priceRange = PRICE_RANGES[selectedPrice];
-    if (priceRange) {
-      result = result.filter(
-        (p) => p.price >= priceRange.min && p.price < priceRange.max
-      );
-    }
-
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.category.toLowerCase().includes(q)
-      );
-    }
-
-    switch (sortBy) {
-      case "price-low":
-        result.sort((a, b) => a.price - b.price);
-        break;
-      case "price-high":
-        result.sort((a, b) => b.price - a.price);
-        break;
-      case "name-az":
-        result.sort((a, b) => a.name.localeCompare(b.name));
-        break;
-      case "name-za":
-        result.sort((a, b) => b.name.localeCompare(a.name));
-        break;
-      default:
-        break;
-    }
-
-    return result;
-  }, [allProducts, selectedCategory, selectedPrice, sortBy, searchQuery]);
-
-  function selectCategory(cat) {
-    setSelectedCategory(cat);
-    const params = new URLSearchParams(searchParams);
-    if (cat === "All") {
-      params.delete("category");
+  function commitSearch(value = searchDraft) {
+    const trimmed = value.trim();
+    const next = new URLSearchParams(searchParams);
+    if (trimmed) {
+      next.set("q", trimmed);
     } else {
-      params.set("category", cat);
+      next.delete("q");
     }
-    setSearchParams(params, { replace: true });
+    setSearchDraft(trimmed);
+    setSearchParams(next, { replace: true });
+  }
+
+  function updateParam(key, value) {
+    const next = new URLSearchParams(searchParams);
+    if (value === null || value === "All" || value === "all" || value === "") {
+      next.delete(key);
+    } else {
+      next.set(key, value);
+    }
+    setSearchParams(next, { replace: true });
   }
 
   function resetFilters() {
-    setSelectedCategory("All");
-    setSelectedPrice(0);
-    setSortBy("featured");
-    setSearchQuery("");
+    setSearchDraft("");
     setSearchParams({}, { replace: true });
   }
 
-  return (
-    <div className="page">
-      <div className="container">
-        <div className="browse-header">
-          <div>
-            <h1 className="browse-title">All Products</h1>
-            <p className="browse-count">{filteredProducts.length} products found</p>
-          </div>
-        </div>
+  const results = useMemo(() => {
+    const query = search.trim().toLowerCase();
 
-        <div className="browse-layout">
-          <aside className="browse-sidebar">
-            <div className="filter-group">
-              <h3 className="filter-heading">Search</h3>
-              <input
-                type="text"
-                className="filter-search"
-                placeholder="Search products..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
+    const filtered = allProducts.filter((product) => {
+      if (category !== "All" && product.category !== category) return false;
+      if (product.price < priceRange.min || product.price >= priceRange.max) return false;
+      if (!query) return true;
+      return (
+        product.name.toLowerCase().includes(query) ||
+        product.category.toLowerCase().includes(query) ||
+        product.description.toLowerCase().includes(query)
+      );
+    });
 
-            <div className="filter-group">
-              <h3 className="filter-heading">Category</h3>
-              <div className="filter-list">
-                {categories.map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    className={`filter-item ${selectedCategory === cat ? "active" : ""}`}
-                    onClick={() => selectCategory(cat)}
-                  >
-                    {cat}
-                    {cat !== "All" && (
-                      <span className="filter-count">
-                        {allProducts.filter((p) => p.category === cat).length}
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
+    const comparator = comparators[sort];
+    return comparator ? [...filtered].sort(comparator) : filtered;
+  }, [category, priceRange, search, sort]);
 
-            <div className="filter-group">
-              <h3 className="filter-heading">Price Range</h3>
-              <div className="filter-list">
-                {PRICE_RANGES.map((range, index) => (
-                  <button
-                    key={range.label}
-                    type="button"
-                    className={`filter-item ${selectedPrice === index ? "active" : ""}`}
-                    onClick={() => setSelectedPrice(index)}
-                  >
-                    {range.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+  const activeFilters = [
+    category !== "All" && { key: "category", label: category },
+    priceId !== "all" && { key: "price", label: priceRange.label },
+    search && { key: "q", label: `"${search}"` },
+  ].filter(Boolean);
 
-            <button
-              type="button"
-              className="filter-reset"
-              onClick={resetFilters}
+  const clearAllButton = (
+    <Button size="small" onClick={resetFilters} disabled={activeFilters.length === 0}>
+      Clear all
+    </Button>
+  );
+
+  // The drawer supplies its own header, so the heading row is desktop-only.
+  const renderFilters = (showHeading) => (
+    <Stack spacing={3} sx={{ p: { xs: 2, md: 0 } }}>
+      {showHeading && (
+        <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between" }}>
+          <Typography variant="subtitle2" color="text.secondary">
+            Filters
+          </Typography>
+          {clearAllButton}
+        </Stack>
+      )}
+
+      <TextField
+        label="Search products"
+        value={searchDraft}
+        onChange={(event) => setSearchDraft(event.target.value)}
+        onBlur={() => {
+          if (searchDraft.trim() !== search) commitSearch();
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            commitSearch();
+          }
+        }}
+        slotProps={{
+          input: {
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon fontSize="small" />
+              </InputAdornment>
+            ),
+          },
+        }}
+      />
+
+      <Box>
+        <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+          Category
+        </Typography>
+        <Stack spacing={0.25}>
+          {["All", ...categories].map((option) => (
+            <Button
+              key={option}
+              onClick={() => updateParam("category", option)}
+              variant={category === option ? "contained" : "text"}
+              color={category === option ? "primary" : "inherit"}
+              size="small"
+              sx={{ justifyContent: "space-between", fontWeight: 500 }}
+              fullWidth
             >
-              Clear All Filters
-            </button>
-          </aside>
+              <span>{option}</span>
+              <Typography variant="caption" color="inherit" sx={{ opacity: 0.7 }}>
+                {option === "All" ? allProducts.length : categoryCounts[option]}
+              </Typography>
+            </Button>
+          ))}
+        </Stack>
+      </Box>
 
-          <div className="browse-main">
-            <div className="browse-toolbar">
-              <span className="browse-sort-label">Sort by:</span>
-              <select
-                className="browse-sort-select"
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
+      <Box>
+        <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+          Price
+        </Typography>
+        <RadioGroup
+          value={priceId}
+          onChange={(event) => updateParam("price", event.target.value)}
+        >
+          {PRICE_RANGES.map((range) => (
+            <FormControlLabel
+              key={range.id}
+              value={range.id}
+              control={<Radio size="small" />}
+              label={<Typography variant="body2">{range.label}</Typography>}
+            />
+          ))}
+        </RadioGroup>
+      </Box>
+
+    </Stack>
+  );
+
+  return (
+    <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 } }}>
+      <Typography variant="h1" gutterBottom>
+        {category === "All" ? "All products" : category}
+      </Typography>
+      <Typography variant="body2" color="text.secondary">
+        {results.length} {results.length === 1 ? "product" : "products"}
+        {results.length > 0 &&
+          ` from ${formatPrice(Math.min(...results.map((p) => p.price)))}`}
+      </Typography>
+
+      {activeFilters.length > 0 && (
+        <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap", mt: 2 }}>
+          {activeFilters.map((filter) => (
+            <Chip
+              key={filter.key}
+              label={filter.label}
+              onDelete={() => {
+                if (filter.key === "q") setSearchDraft("");
+                updateParam(filter.key, null);
+              }}
+              size="small"
+            />
+          ))}
+        </Stack>
+      )}
+
+      <Box
+        sx={{
+          display: "grid",
+          // minmax(0, …) lets the sidebar honor maxHeight; plain 240px keeps
+          // min-height:auto and the panel grows with the filters forever.
+          gridTemplateColumns: { xs: "1fr", md: "minmax(0, 240px) minmax(0, 1fr)" },
+          gap: { xs: 2, md: 4 },
+          mt: 3,
+          alignItems: "start",
+        }}
+      >
+        <Paper
+          variant="outlined"
+          sx={{
+            p: 2.5,
+            display: { xs: "none", md: "block" },
+            position: "sticky",
+            top: 88,
+            alignSelf: "start",
+            width: "100%",
+            minHeight: 0,
+            maxHeight: "calc(100dvh - 104px)",
+            overflowY: "auto",
+            overscrollBehavior: "contain",
+            WebkitOverflowScrolling: "touch",
+          }}
+        >
+          {renderFilters(true)}
+        </Paper>
+
+        <Box>
+          <Stack
+            direction="row"
+            spacing={2}
+            useFlexGap
+            sx={{
+              alignItems: "center",
+              justifyContent: "space-between",
+              flexWrap: "wrap",
+              mb: 2.5,
+            }}
+          >
+            <Button
+              startIcon={<FilterListIcon />}
+              variant="outlined"
+              onClick={() => setFiltersOpen(true)}
+              sx={{ display: { md: "none" } }}
+            >
+              Filters
+              {activeFilters.length > 0 ? ` (${activeFilters.length})` : ""}
+            </Button>
+
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{ alignItems: "center", display: { xs: "none", lg: "flex" } }}
+            >
+              <Typography variant="caption" color="text.secondary">
+                Columns
+              </Typography>
+              <ToggleButtonGroup
+                size="small"
+                exclusive
+                value={columns}
+                onChange={(_, value) => value && setColumns(value)}
+                aria-label="Products per row"
               >
-                {SORT_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
+                {[2, 3, 4].map((count) => (
+                  <ToggleButton key={count} value={count} aria-label={`${count} columns`}>
+                    {count}
+                  </ToggleButton>
                 ))}
-              </select>
-            </div>
+              </ToggleButtonGroup>
+            </Stack>
 
-            {filteredProducts.length === 0 ? (
-              <div className="browse-empty">
-                <p>No products match your filters.</p>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={resetFilters}
-                >
-                  Reset Filters
-                </button>
-              </div>
-            ) : (
-              <div className="browse-grid">
-                {filteredProducts.map((product) => {
-                  const inCart = cartItems.find((item) => item.id === product.id);
-                  return (
-                    <div className="browse-card" key={product.id}>
-                      <Link
-                        to={`/products/${product.id}`}
-                        className="browse-card-image-link"
-                      >
-                        {product.image ? (
-                          <img
-                            src={product.image}
-                            alt={product.name}
-                            className="browse-card-image"
-                          />
-                        ) : (
-                          <div className="browse-card-image-placeholder">
-                            {product.name.charAt(0)}
-                          </div>
-                        )}
-                      </Link>
-                      <div className="browse-card-body">
-                        <p className="browse-card-category">{product.category}</p>
-                        <Link
-                          to={`/products/${product.id}`}
-                          className="browse-card-name"
-                        >
-                          {product.name}
-                        </Link>
-                        <p className="browse-card-price">${product.price}</p>
-                        <div className="browse-card-actions">
-                          <button
-                            className="btn btn-primary btn-small"
-                            onClick={() => addToCart(product.id)}
-                          >
-                            Add to Cart{inCart ? ` (${inCart.quantity})` : ""}
-                          </button>
-                          <Link
-                            to={`/products/${product.id}`}
-                            className="btn btn-secondary btn-small"
-                          >
-                            Details
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
+            <FormControl
+              size="small"
+              sx={{
+                minWidth: { sm: 200 },
+                width: { xs: "100%", sm: "auto" },
+                ml: { sm: "auto" },
+              }}
+            >
+              <InputLabel id="sort-label">Sort by</InputLabel>
+              <Select
+                labelId="sort-label"
+                label="Sort by"
+                value={sort}
+                onChange={(event) => updateParam("sort", event.target.value)}
+              >
+                {SORT_OPTIONS.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Stack>
+
+          {results.length === 0 ? (
+            <Paper variant="outlined" sx={{ p: 6, textAlign: "center" }}>
+              <Typography variant="h4" gutterBottom>
+                Nothing matches those filters
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
+                Try widening the price range or clearing the search term.
+              </Typography>
+              <Button variant="contained" onClick={resetFilters}>
+                Clear filters
+              </Button>
+            </Paper>
+          ) : !ready ? (
+            <ProductGridSkeleton count={9} columns={columns} />
+          ) : (
+            <Box
+              sx={{
+                display: "grid",
+                gap: 2.5,
+                gridTemplateColumns: {
+                  xs: "repeat(1, 1fr)",
+                  sm: "repeat(2, 1fr)",
+                  md: `repeat(${Math.min(columns, 3)}, 1fr)`,
+                  lg: `repeat(${columns}, 1fr)`,
+                },
+              }}
+            >
+              {results.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </Box>
+          )}
+        </Box>
+      </Box>
+
+      <Drawer
+        anchor="left"
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        sx={{ display: { md: "none" } }}
+      >
+        <Box sx={{ width: 300, display: "flex", flexDirection: "column", height: "100%" }}>
+          <Stack
+            direction="row"
+            sx={{
+              alignItems: "center",
+              justifyContent: "space-between",
+              p: 2,
+              borderBottom: 1,
+              borderColor: "divider",
+            }}
+          >
+            <Typography variant="h6">Filters</Typography>
+            <Stack direction="row" spacing={0.5} sx={{ alignItems: "center" }}>
+              {clearAllButton}
+              <IconButton onClick={() => setFiltersOpen(false)} aria-label="Close filters">
+                <CloseIcon />
+              </IconButton>
+            </Stack>
+          </Stack>
+
+          <Box sx={{ flexGrow: 1, overflowY: "auto" }}>{renderFilters(false)}</Box>
+
+          <Box sx={{ p: 2, borderTop: 1, borderColor: "divider" }}>
+            <Button variant="contained" fullWidth onClick={() => setFiltersOpen(false)}>
+              Show {results.length} {results.length === 1 ? "product" : "products"}
+            </Button>
+          </Box>
+        </Box>
+      </Drawer>
+    </Container>
   );
 }

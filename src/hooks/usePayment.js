@@ -1,38 +1,32 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { submitPayment } from "../services/paymentService";
 
 export function usePayment() {
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [paymentError, setPaymentError] = useState("");
-  const [paymentSuccess, setPaymentSuccess] = useState(null);
+  const [status, setStatus] = useState("idle");
+  const [error, setError] = useState(null);
+  const [receipt, setReceipt] = useState(null);
 
-  async function processPayment(payload) {
-    setPaymentError("");
-    setPaymentSuccess(null);
-    setIsProcessing(true);
+  const pay = useCallback(async (order) => {
+    setStatus("processing");
+    setError(null);
 
     try {
-      const result = await submitPayment(payload);
-      setPaymentSuccess(result);
-      return { success: true, result };
-    } catch (error) {
-      setPaymentError(error.message || "Payment failed.");
+      const result = await submitPayment(order);
+      setReceipt(result);
+      setStatus("succeeded");
+      return { success: true, receipt: result };
+    } catch (cause) {
+      setError(cause.message);
+      setStatus("failed");
       return { success: false };
-    } finally {
-      setIsProcessing(false);
     }
-  }
-
-  function resetPaymentState() {
-    setPaymentError("");
-    setPaymentSuccess(null);
-  }
+  }, []);
 
   return {
-    isProcessing,
-    paymentError,
-    paymentSuccess,
-    processPayment,
-    resetPaymentState,
+    pay,
+    error,
+    receipt,
+    isProcessing: status === "processing",
+    isComplete: status === "succeeded",
   };
 }

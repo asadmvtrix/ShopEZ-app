@@ -1,56 +1,75 @@
-const PAYMENT_API_URL = "https://jsonplaceholder.typicode.com/posts";
+const ENDPOINT =
+  import.meta.env.VITE_PAYMENT_API_URL ?? "https://jsonplaceholder.typicode.com/posts";
+const REQUEST_TIMEOUT_MS = 8000;
 
-// Delays to simulate realistic network/processing latency
-function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+export class PaymentError extends Error {
+  constructor(message, code) {
+    super(message);
+    this.name = "PaymentError";
+    this.code = code;
+  }
 }
 
-export async function submitPayment(orderPayload) {
-  // Simulate processing time so the spinner shows and the UX feels real
-  await delay(1400);
+// No real acquirer is wired up, so authorisation is decided here. Card numbers ending
+// in these values let us exercise the failure paths without a gateway account.
+const DECLINE_CODES = {
+  "0000": ["card_declined", "Your card was declined. Try a different payment method."],
+  "1111": ["insufficient_funds", "There are not enough funds on this card."],
+};
 
-  // Reject obvious test cases to demonstrate error handling (e.g. card 0000 0000 0000 0000)
-  const number = (orderPayload.cardMeta?.last4 || "").trim();
-  if (number === "0000") {
-    throw new Error("Your card was declined. Please try a different card.");
+function authorise(last4) {
+  const decline = DECLINE_CODES[last4];
+  if (decline) {
+    throw new PaymentError(decline[1], decline[0]);
   }
+}
+
+function reference() {
+  const random = crypto.getRandomValues(new Uint32Array(1))[0];
+  return `PAY-${Date.now().toString(36)}-${random.toString(36)}`.toUpperCase();
+}
+
+export async function submitPayment(order) {
+  const last4 = order.card?.last4 ?? "";
+  authorise(last4);
+
+  // The order is posted so the flow exercises a real request/response cycle; card
+  // numbers and CVVs never leave the browser, only the brand and last four digits.
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
-    const response = await fetch(PAYMENT_API_URL, {
+    const response = await fetch(ENDPOINT, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(orderPayload),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(order),
+      signal: controller.signal,
     });
 
     if (!response.ok) {
-      throw new Error("Payment service is currently unavailable. Please try again.");
+      throw new PaymentError(
+        "The payment service rejected the request. Please try again.",
+        `http_${response.status}`
+      );
     }
 
-    const data = await response.json();
-    const paymentId = `PAY-${String(
-      orderPayload.createdAt ? Date.now() : data.id || Date.now()
-    ).slice(-10)}`;
-
-    return {
-      paymentId,
-      status: "approved",
-      amount: orderPayload.amount ?? 0,
-      paidAt: new Date().toISOString(),
-      last4: number,
-      brand: orderPayload.cardMeta?.brand || "Card",
-    };
+    await response.json();
   } catch (error) {
-    // If the network call fails (e.g. offline), still simulate a successful payment
-    // so the checkout flow can be demonstrated end-to-end.
-    return {
-      paymentId: `PAY-${String(Date.now()).slice(-10)}`,
-      status: "approved",
-      amount: orderPayload.amount ?? 0,
-      paidAt: new Date().toISOString(),
-      last4: number,
-      brand: orderPayload.cardMeta?.brand || "Card",
-    };
+    if (error instanceof PaymentError) throw error;
+    if (error.name === "AbortError") {
+      throw new PaymentError("The payment timed out. Check your connection and retry.", "timeout");
+    }
+    throw new PaymentError("Could not reach the payment service. Please try again.", "network");
+  } finally {
+    clearTimeout(timeout);
   }
+
+  return {
+    reference: reference(),
+    status: "approved",
+    amount: order.amount,
+    brand: order.card?.brand ?? "Card",
+    last4,
+    paidAt: new Date().toISOString(),
+  };
 }

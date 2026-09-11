@@ -386,3 +386,78 @@ export function getProducts() {
 export function getProductById(id) {
   return products.find((product) => product.id === Number(id));
 }
+
+export function getCategories() {
+  return [...new Set(products.map((product) => product.category))].sort();
+}
+
+// Stock codes are derived rather than stored: the catalogue is small and the id is
+// already the stable identifier, so keeping a second column in sync buys nothing.
+export function getSku(product) {
+  const prefix = product.category.replace(/[^A-Za-z]/g, "").slice(0, 3).toUpperCase();
+  return `SEZ-${prefix}-${String(product.id).padStart(3, "0")}`;
+}
+
+// Longest first so "Western Digital" wins over "WD" and "Logitech G" over "Logitech".
+const BRANDS = [
+  "Western Digital",
+  "Fractal Design",
+  "Logitech G",
+  "SteelSeries",
+  "Be Quiet",
+  "Seasonic",
+  "Phanteks",
+  "Keychron",
+  "Glorious",
+  "Logitech",
+  "Crucial",
+  "Corsair",
+  "Samsung",
+  "TP-Link",
+  "HyperX",
+  "Noctua",
+  "NVIDIA",
+  "Elgato",
+  "Anker",
+  "Razer",
+  "Sonos",
+  "Apple",
+  "ASUS",
+  "BenQ",
+  "NZXT",
+  "Dell",
+  "JBL",
+  "WD",
+  "LG",
+];
+
+export function getBrand(product) {
+  return BRANDS.find((brand) => product.name.startsWith(brand)) ?? null;
+}
+
+// The catalogue descriptions are written as comma-separated spec sentences, so they
+// can be broken into feature bullets instead of inventing a spec sheet. Fragments keep
+// their original casing because terms like "webOS" must not be sentence-cased.
+export function getHighlights(product) {
+  return product.description
+    .split(/(?<=\.)\s+/)
+    .flatMap((sentence) => {
+      const clean = sentence.trim().replace(/\.$/, "");
+      const commas = (clean.match(/,/g) ?? []).length;
+      return commas >= 2 ? clean.split(",") : [clean];
+    })
+    .map((fragment) => fragment.trim().replace(/^(and|plus)\s+/i, ""))
+    .filter((fragment) => fragment.length > 2);
+}
+
+export function getCategorySummaries() {
+  return getCategories().map((category) => {
+    const inCategory = products.filter((product) => product.category === category);
+    return {
+      category,
+      count: inCategory.length,
+      image: inCategory[0]?.image ?? null,
+      from: Math.min(...inCategory.map((product) => product.price)),
+    };
+  });
+}
