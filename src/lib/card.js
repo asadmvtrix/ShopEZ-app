@@ -23,7 +23,7 @@ export function formatCardNumber(value) {
   const brand = detectBrand(digits);
   const trimmed = digits.slice(0, brand.length);
 
-  // Amex prints as 4-6-5 rather than even groups of four.
+
   const groups = brand.id === "amex" ? [4, 6, 5] : [4, 4, 4, 4];
   const parts = [];
   let cursor = 0;

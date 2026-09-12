@@ -5,7 +5,6 @@ import { clearGoogleOAuthAttempt, markGoogleOAuthAttempt } from "../lib/oauth";
 import { remove } from "../lib/storage";
 import { toUserMessage } from "../lib/errors";
 
-// Drop the old localStorage auth keys so a previous sandbox session cannot linger.
 remove("shopez.users");
 remove("shopez.session");
 
@@ -221,7 +220,7 @@ export default function AuthProvider({ children }) {
     try {
       if (supabase) await supabase.auth.signOut();
     } catch {
-      // Still clear local session so the UI recovers.
+
     }
     setUser(null);
   }, []);
@@ -323,7 +322,7 @@ export default function AuthProvider({ children }) {
       try {
         await supabase.auth.signOut();
       } catch {
-        // ignore
+
       }
       setUser(null);
       return { success: true };

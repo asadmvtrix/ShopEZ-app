@@ -79,7 +79,7 @@ function SimplePageFallback() {
   );
 }
 
-// Route-shaped placeholders while lazy chunks load — same idea Meta/Google use for feed cards.
+
 export default function RouteFallback() {
   const { pathname } = useLocation();
 

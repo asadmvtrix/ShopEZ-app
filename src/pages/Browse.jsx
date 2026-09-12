@@ -70,16 +70,14 @@ export default function Browse() {
     [categories, allProducts]
   );
 
-  // The URL is the source of truth so category links, sorting and search survive
-  // a refresh or a shared link.
+
   const category = searchParams.get("category") ?? "All";
   const search = searchParams.get("q") ?? "";
   const sort = searchParams.get("sort") ?? "featured";
   const priceId = searchParams.get("price") ?? "all";
   const priceRange = PRICE_RANGES.find((range) => range.id === priceId) ?? PRICE_RANGES[0];
 
-  // Local draft so typing stays smooth; the URL (and results) update after a pause
-  // so slower typists are not cut off mid-word.
+
   const [searchDraft, setSearchDraft] = useState(search);
 
   useEffect(() => {
@@ -160,7 +158,7 @@ export default function Browse() {
     </Button>
   );
 
-  // The drawer supplies its own header, so the heading row is desktop-only.
+
   const renderFilters = (showHeading) => (
     <Stack spacing={3} sx={{ p: { xs: 2, md: 0 } }}>
       {showHeading && (
@@ -272,8 +270,7 @@ export default function Browse() {
       <Box
         sx={{
           display: "grid",
-          // minmax(0, …) lets the sidebar honor maxHeight; plain 240px keeps
-          // min-height:auto and the panel grows with the filters forever.
+
           gridTemplateColumns: { xs: "1fr", md: "minmax(0, 240px) minmax(0, 1fr)" },
           gap: { xs: 2, md: 4 },
           mt: 3,

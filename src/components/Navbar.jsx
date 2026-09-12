@@ -69,7 +69,6 @@ export default function Navbar() {
   return (
     <AppBar position="sticky">
       <Container maxWidth="lg" disableGutters>
-        {/* Icon buttons shrink on phones so the full set still fits a 320px screen. */}
         <Toolbar
           sx={{
             gap: { xs: 0.25, sm: 1 },
@@ -205,8 +204,6 @@ export default function Navbar() {
             </>
           ) : (
             <>
-              {/* The two buttons do not fit a phone toolbar, but signed-out visitors
-                  still need a visible way in without opening the drawer. */}
               <Tooltip title="Sign in">
                 <IconButton
                   component={RouterLink}

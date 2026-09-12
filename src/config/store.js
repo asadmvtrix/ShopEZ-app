@@ -18,7 +18,7 @@ export function formatPrice(value) {
   return priceFormatter.format(Number(value) || 0);
 }
 
-// For prose such as "free delivery over $99", where trailing zeroes read as clutter.
+
 export function formatPriceShort(value) {
   return formatPrice(value).replace(/\.00$/, "");
 }

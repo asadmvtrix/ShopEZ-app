@@ -15,7 +15,7 @@ export default function ColorModeProvider({ children }) {
     return saved === "light" || saved === "dark" ? saved : null;
   });
 
-  // Until the visitor picks a side, follow the operating system.
+
   const mode = storedMode ?? (prefersDark ? "dark" : "light");
 
   useEffect(() => {
@@ -30,7 +30,7 @@ export default function ColorModeProvider({ children }) {
     });
   }, [prefersDark]);
 
-  // "system" clears the saved choice and hands control back to the OS.
+
   const setPreference = useCallback((preference) => {
     if (preference === "system") {
       remove(MODE_KEY);

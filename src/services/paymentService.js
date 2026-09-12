@@ -10,8 +10,7 @@ export class PaymentError extends Error {
   }
 }
 
-// No real acquirer is wired up, so authorisation is decided here. Card numbers ending
-// in these values let us exercise the failure paths without a gateway account.
+
 const DECLINE_CODES = {
   "0000": ["card_declined", "Your card was declined. Try a different payment method."],
   "1111": ["insufficient_funds", "There are not enough funds on this card."],
@@ -33,8 +32,7 @@ export async function submitPayment(order) {
   const last4 = order.card?.last4 ?? "";
   authorise(last4);
 
-  // The order is posted so the flow exercises a real request/response cycle; card
-  // numbers and CVVs never leave the browser, only the brand and last four digits.
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 

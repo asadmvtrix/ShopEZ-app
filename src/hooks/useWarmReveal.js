@@ -7,7 +7,7 @@ export function markAppEnter() {
   try {
     sessionStorage.setItem(ENTER_KEY, "1");
   } catch {
-    // private mode / blocked storage — reveal still works without the flag
+
   }
 }
 
@@ -38,7 +38,7 @@ export function useWarmReveal({ fromAuth = false } = {}) {
       timeoutId = window.setTimeout(() => setReady(true), wait);
     };
 
-    // Two frames so the skeleton paints before we start the timer window.
+
     const outer = requestAnimationFrame(() => {
       requestAnimationFrame(finish);
     });

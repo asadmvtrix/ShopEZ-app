@@ -70,8 +70,7 @@ export default function CardBrandIcon({ brand, dimmed = false, title }) {
         height: HEIGHT,
         display: "block",
         flexShrink: 0,
-        // Opacity alone is not enough to read as "not your card" against the dark
-        // theme, so the unselected brands lose their colour too.
+
         opacity: dimmed ? 0.4 : 1,
         filter: dimmed ? "grayscale(1)" : "none",
         transition: "opacity 150ms, filter 150ms",

@@ -5,7 +5,7 @@ const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
 
 export const isSupabaseConfigured = Boolean(url && anonKey);
 
-// Null when env is missing so the UI can show a setup message instead of crashing.
+
 export const supabase = isSupabaseConfigured ? createClient(url, anonKey) : null;
 
 export function authRedirectTo(path = "/auth?mode=update-password") {

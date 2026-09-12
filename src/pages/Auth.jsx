@@ -101,7 +101,6 @@ function CredentialsForm({ isSignUp, redirectTo, verifiedNotice, onNeedsConfirma
     mode: "onTouched",
   });
 
-  // Coming back from a closed Google tab can restore this page with a stuck spinner.
   useEffect(() => {
     const clearBusy = () => setGoogleBusy(false);
     const onPageShow = (event) => {
@@ -512,7 +511,6 @@ export default function Auth() {
       ? requested
       : "signup";
   const redirectTo = searchParams.get("redirect");
-  // Keep verified banner after we strip ?verified=1 from the URL.
   const [sawVerifiedParam] = useState(() => searchParams.get("verified") === "1");
   const verifiedNotice =
     verifiedFromLink || sawVerifiedParam || searchParams.get("verified") === "1";
@@ -534,7 +532,6 @@ export default function Auth() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // After Google returns, drop into the store once the session is ready (once only).
   useEffect(() => {
     if (loading || !user || !fromOAuth || enteredFromOAuth.current) return;
     enteredFromOAuth.current = true;
@@ -550,7 +547,6 @@ export default function Auth() {
     return () => window.clearTimeout(timer);
   }, [fromOAuth, user]);
 
-  // Clean the URL once we have captured the verified flag.
   useEffect(() => {
     if (searchParams.get("verified") !== "1") return;
     const next = new URLSearchParams(searchParams);
@@ -605,7 +601,6 @@ export default function Auth() {
     );
   }
 
-  // Confirmation link often establishes a session immediately.
   if (!loading && user && verifiedNotice && mode !== "update-password") {
     return (
       <Container maxWidth="xs" sx={{ py: { xs: 5, md: 8 } }}>

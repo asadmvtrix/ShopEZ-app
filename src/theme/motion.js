@@ -1,6 +1,6 @@
 import { keyframes } from "@mui/system";
 
-// Short interaction + page feedback. No slide choreography — opacity only for enters.
+
 export const DURATION = {
   instant: 100,
   fast: 160,
@@ -17,7 +17,7 @@ export function transition(...properties) {
     .join(", ");
 }
 
-// Opacity-only so sticky sidebars stay intact (transform on an ancestor breaks them).
+
 export const contentEnter = keyframes`
   from { opacity: 0; }
   to { opacity: 1; }

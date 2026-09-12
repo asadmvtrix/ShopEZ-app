@@ -23,11 +23,10 @@ const palettes = {
   },
 };
 
-// Only used to read the default breakpoint helpers while building the type scale.
+
 const { breakpoints } = createTheme();
 
-// The headings step down on small screens from one place, so a page title can never
-// end up larger on a phone than the hero headline above it.
+
 const heading = (weight, sizes, extra = {}) => ({
   fontWeight: weight,
   fontSize: sizes.xs,
@@ -78,14 +77,11 @@ export function createAppTheme(mode) {
           body: {
             minHeight: "100%",
             margin: 0,
-            // Stops accidental horizontal scroll from locking touch/scroll on phones
-            // and in Chrome device-mode inspection.
+
             overflowX: "hidden",
           },
           img: { display: "block", maxWidth: "100%" },
-          // Overlay scrollbars on Windows and macOS hide themselves until you scroll,
-          // which makes panels that scroll on their own look like dead ends. These are
-          // always visible once a track exists.
+
           "*": {
             scrollbarWidth: "thin",
             scrollbarColor: `${theme.palette.text.disabled} transparent`,

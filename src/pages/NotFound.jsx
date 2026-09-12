@@ -8,7 +8,6 @@ import { MONO } from "../theme";
 export default function NotFound() {
   return (
     <Container maxWidth="sm" sx={{ py: { xs: 8, md: 12 }, textAlign: "center" }}>
-      {/* A display numeral rather than a page title, so it keeps its own scale. */}
       <Typography
         variant="h1"
         sx={{ fontFamily: MONO, color: "text.disabled", fontSize: { xs: "3rem", md: "4rem" } }}

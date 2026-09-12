@@ -4,7 +4,7 @@ export function markGoogleOAuthAttempt() {
   try {
     sessionStorage.setItem(OAUTH_ATTEMPT_KEY, "1");
   } catch {
-    // ignore
+
   }
 }
 
@@ -12,7 +12,7 @@ export function clearGoogleOAuthAttempt() {
   try {
     sessionStorage.removeItem(OAUTH_ATTEMPT_KEY);
   } catch {
-    // ignore
+
   }
 }
 

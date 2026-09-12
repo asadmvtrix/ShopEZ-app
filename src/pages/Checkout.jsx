@@ -165,7 +165,6 @@ export default function Checkout() {
     return (
       <Container maxWidth="sm" sx={{ py: { xs: 5, md: 8 } }}>
         <Paper variant="outlined" sx={{ p: { xs: 4, md: 6 }, textAlign: "center" }}>
-          {/* Still the page heading, just not at page-title size. */}
           <Typography variant="h3" component="h1" gutterBottom>
             There is nothing to pay for
           </Typography>

@@ -23,7 +23,7 @@ export default function QuickPickCard({ product }) {
   const inCart = quantityOf(product.id);
   const headroom = MAX_QUANTITY_PER_ITEM - inCart;
   const canAdd = headroom > 0;
-  // Never let the stepper offer more than the cart can still take.
+
   const capped = Math.min(quantity, Math.max(headroom, 1));
 
   function handleAdd() {

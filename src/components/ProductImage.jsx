@@ -4,7 +4,7 @@ import Skeleton from "@mui/material/Skeleton";
 import Typography from "@mui/material/Typography";
 import { transition } from "../theme/motion";
 
-// key={image} remounts this so load state resets without an effect.
+
 function ProductImageInner({ product, height = 200, imagePadding = 1.5, sx }) {
   const [phase, setPhase] = useState("loading");
   const ready = phase === "ready";
@@ -42,7 +42,7 @@ function ProductImageInner({ product, height = 200, imagePadding = 1.5, sx }) {
           alt={product.name}
           loading="lazy"
           ref={(img) => {
-            // Cached images may already be complete before onLoad can fire.
+
             if (!img || phase !== "loading") return;
             if (img.complete) {
               setPhase(img.naturalWidth > 0 ? "ready" : "error");

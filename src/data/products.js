@@ -391,14 +391,11 @@ export function getCategories(list = products) {
   return [...new Set(list.map((product) => product.category))].sort();
 }
 
-// Stock codes are derived rather than stored: the catalogue is small and the id is
-// already the stable identifier, so keeping a second column in sync buys nothing.
 export function getSku(product) {
   const prefix = product.category.replace(/[^A-Za-z]/g, "").slice(0, 3).toUpperCase();
   return `SEZ-${prefix}-${String(product.id).padStart(3, "0")}`;
 }
 
-// Longest first so "Western Digital" wins over "WD" and "Logitech G" over "Logitech".
 const BRANDS = [
   "Western Digital",
   "Fractal Design",
@@ -435,9 +432,6 @@ export function getBrand(product) {
   return BRANDS.find((brand) => product.name.startsWith(brand)) ?? null;
 }
 
-// The catalogue descriptions are written as comma-separated spec sentences, so they
-// can be broken into feature bullets instead of inventing a spec sheet. Fragments keep
-// their original casing because terms like "webOS" must not be sentence-cased.
 export function getHighlights(product) {
   return product.description
     .split(/(?<=\.)\s+/)

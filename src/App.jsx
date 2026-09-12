@@ -16,8 +16,6 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import GlobalErrorBridge from "./components/GlobalErrorBridge";
 import Home from "./pages/Home";
 
-// Home is the usual entry point, so it ships in the initial bundle; the rest load
-// on navigation.
 const Browse = lazy(() => import("./pages/Browse"));
 const ProductDetails = lazy(() => import("./pages/ProductDetails"));
 const Cart = lazy(() => import("./pages/Cart"));
@@ -62,7 +60,6 @@ export default function App() {
                         }
                       />
                       <Route path="/auth" element={<Auth />} />
-                      {/* Kept so bookmarks from before the cart/checkout rename still resolve. */}
                       <Route path="/payment" element={<Navigate to="/checkout" replace />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>

@@ -45,7 +45,6 @@ export default function ProductCard({ product, imageHeight = 190 }) {
         transition: transition("border-color", "box-shadow", "transform"),
       }}
     >
-      {/* Plain link — CardActionArea paints a hover wash that reads as a nested panel. */}
       <Box
         component={RouterLink}
         to={`/products/${product.id}`}
