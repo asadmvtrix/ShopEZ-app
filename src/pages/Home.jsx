@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -17,39 +17,43 @@ import ProductCard from "../components/ProductCard";
 import ProductGrid from "../components/ProductGrid";
 import SectionHeader from "../components/SectionHeader";
 import StorefrontMasthead from "../components/StorefrontMasthead";
+import { useCatalog } from "../context/catalog-context";
 import { consumeAppEnter, useWarmReveal } from "../hooks/useWarmReveal";
-import { getCategories, getProductById, getProducts } from "../data/products";
 
-const products = getProducts();
-const categories = getCategories();
+const CARD_SCROLL_STEP = 344;
 
-// Chosen for strong product photography. Topping up from the catalogue keeps the
-// layout intact if any of these ids are ever removed.
-function pick(ids, count) {
-  const chosen = ids.map(getProductById).filter(Boolean);
+function pickFrom(products, getProductById, ids, count) {
+  const chosen = ids.map((id) => getProductById(id)).filter(Boolean);
   if (chosen.length >= count) return chosen.slice(0, count);
   const filler = products.filter((product) => !chosen.includes(product));
   return [...chosen, ...filler.slice(0, count - chosen.length)];
 }
 
-const spotlight = pick([3, 40, 4], 3);
-const quickPicks = pick([11, 31, 24], 3);
-
-const mastheadIds = new Set([...spotlight, ...quickPicks].map((product) => product.id));
-const popular = products.filter((product) => !mastheadIds.has(product.id)).slice(0, 8);
-
-const popularIds = new Set(popular.map((product) => product.id));
-const remaining = products.filter(
-  (product) => !mastheadIds.has(product.id) && !popularIds.has(product.id)
-);
-
-const CARD_SCROLL_STEP = 344;
-
 export default function Home() {
+  const { products, categories, getProductById, loading } = useCatalog();
   const scrollerRef = useRef(null);
   const [columns, setColumns] = useState(4);
   const [fromAuth] = useState(() => consumeAppEnter());
   const ready = useWarmReveal({ fromAuth });
+
+  const { spotlight, quickPicks, popular, remaining } = useMemo(() => {
+    const spotlightItems = pickFrom(products, getProductById, [3, 40, 4], 3);
+    const quickPickItems = pickFrom(products, getProductById, [11, 31, 24], 3);
+    const mastheadIds = new Set(
+      [...spotlightItems, ...quickPickItems].map((product) => product.id)
+    );
+    const popularItems = products.filter((product) => !mastheadIds.has(product.id)).slice(0, 8);
+    const popularIds = new Set(popularItems.map((product) => product.id));
+    const remainingItems = products.filter(
+      (product) => !mastheadIds.has(product.id) && !popularIds.has(product.id)
+    );
+    return {
+      spotlight: spotlightItems,
+      quickPicks: quickPickItems,
+      popular: popularItems,
+      remaining: remainingItems,
+    };
+  }, [products, getProductById]);
 
   function scrollBy(direction) {
     scrollerRef.current?.scrollBy({
@@ -58,7 +62,7 @@ export default function Home() {
     });
   }
 
-  if (!ready) {
+  if (!ready || loading) {
     return <HomeSkeleton />;
   }
 

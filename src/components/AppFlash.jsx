@@ -13,7 +13,6 @@ const HIDE_MS = {
   error: 2800,
 };
 
-// Compact top-right toast — success + error, same pattern as common desktop SaaS.
 export default function AppFlash() {
   const location = useLocation();
   const [toast, setToast] = useState(null);

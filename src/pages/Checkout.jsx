@@ -35,11 +35,6 @@ import {
 
 const STEPS = ["Cart", "Payment", "Confirmation"];
 
-// The cc-* autocomplete tokens tell the browser to offer a saved card. That is right
-// against a real gateway and wrong here: the sandbox posts to a placeholder endpoint,
-// so a real card should never be pulled into it. Over plain http Chrome also parks a
-// "filling is disabled, no secure connection" bubble over the form. Both go away when
-// the tokens are only emitted once a payment endpoint is actually configured.
 const SANDBOX = !import.meta.env.VITE_PAYMENT_API_URL;
 const cardField = (token) => (SANDBOX ? "off" : token);
 
@@ -64,10 +59,10 @@ function Receipt({ receipt }) {
       <Paper variant="outlined" sx={{ p: { xs: 3, md: 5 }, textAlign: "center" }}>
         <CheckCircleOutlineIcon color="success" sx={{ fontSize: 56 }} />
         <Typography variant="h1" sx={{ mt: 1.5 }}>
-          Payment approved
+          Order placed
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-          Your order is confirmed. Keep the reference below if you need to get in touch.
+          Your order is saved to your account. Keep the reference below if you need help later.
         </Typography>
 
         <Stack spacing={1.5} sx={{ my: 4, textAlign: "left" }}>
@@ -96,12 +91,18 @@ function Receipt({ receipt }) {
         </Stack>
 
         <Alert severity="info" sx={{ textAlign: "left", mb: 3 }}>
-          This is a sandbox checkout. No card was charged and no confirmation email is sent.
+          Payment is still sandboxed — no card was charged. The order itself is stored in your
+          ShopEZ account.
         </Alert>
 
-        <Button component={RouterLink} to="/browse" variant="contained" size="large">
-          Continue shopping
-        </Button>
+        <Stack spacing={1.5}>
+          <Button component={RouterLink} to="/account" variant="contained" size="large">
+            View order history
+          </Button>
+          <Button component={RouterLink} to="/browse" variant="outlined" size="large">
+            Continue shopping
+          </Button>
+        </Stack>
       </Paper>
     </Container>
   );
@@ -135,17 +136,20 @@ export default function Checkout() {
 
     const digits = digitsOnly(fields.number);
     const result = await pay({
-      email: user.email,
-      amount: Number(total.toFixed(2)),
-      lines: items.map((item) => ({
-        sku: item.id,
-        name: item.product.name,
-        quantity: item.quantity,
-        unitPrice: item.product.price,
-      })),
-      // Only the brand and last four digits leave the form; the PAN and CVV are dropped.
-      card: { brand: brand.label, last4: digits.slice(-4), expiry: fields.expiry },
-      placedAt: new Date().toISOString(),
+      userId: user.id,
+      items,
+      orderPayload: {
+        email: user.email,
+        amount: Number(total.toFixed(2)),
+        lines: items.map((item) => ({
+          sku: item.id,
+          name: item.product.name,
+          quantity: item.quantity,
+          unitPrice: item.product.price,
+        })),
+        card: { brand: brand.label, last4: digits.slice(-4), expiry: fields.expiry },
+        placedAt: new Date().toISOString(),
+      },
     });
 
     if (result.success) {
@@ -190,7 +194,6 @@ export default function Checkout() {
         sx={{
           maxWidth: 520,
           my: 3,
-          // "Confirmation" pushes the last step past the edge on a 320px screen.
           "& .MuiStep-root": { px: { xs: 0.25, sm: 1 } },
           "& .MuiStepLabel-label": { fontSize: { xs: "0.7rem", sm: "0.875rem" } },
         }}
@@ -212,7 +215,8 @@ export default function Checkout() {
       >
         <Box component="form" onSubmit={handleSubmit} noValidate autoComplete={SANDBOX ? "off" : "on"}>
           <Alert severity="info" variant="outlined" sx={{ mb: 3 }}>
-            Sandbox checkout, so nothing is charged. Use{" "}
+            Sandbox card check only — nothing is charged. Approved checkouts are saved as real
+            orders on your account. Use{" "}
             <Box component="span" sx={{ fontFamily: MONO }}>
               4242 4242 4242 4242
             </Box>{" "}

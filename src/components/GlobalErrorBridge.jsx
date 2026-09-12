@@ -10,7 +10,6 @@ function shouldIgnore(reason) {
   return false;
 }
 
-// Catches unexpected async failures that pages forgot to handle.
 export default function GlobalErrorBridge() {
   useEffect(() => {
     function onRejection(event) {

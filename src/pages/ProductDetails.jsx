@@ -22,8 +22,8 @@ import VerifiedUserOutlinedIcon from "@mui/icons-material/VerifiedUserOutlined";
 import ProductImage from "../components/ProductImage";
 import ProductGrid from "../components/ProductGrid";
 import SectionHeader from "../components/SectionHeader";
-import { getBrand, getHighlights, getProductById, getProducts, getSku } from "../data/products";
 import { useCart } from "../context/cart-context";
+import { useCatalog } from "../context/catalog-context";
 import { setFlash } from "../lib/flash";
 import {
   FREE_SHIPPING_THRESHOLD,
@@ -84,17 +84,22 @@ function MissingProduct() {
 export default function ProductDetails() {
   const { id } = useParams();
   const { addToCart, quantityOf } = useCart();
+  const { getProductById, products, getBrand, getHighlights, getSku, loading } = useCatalog();
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
 
-  const product = useMemo(() => getProductById(id), [id]);
+  const product = useMemo(() => getProductById(id), [getProductById, id]);
 
   const related = useMemo(() => {
     if (!product) return [];
-    return getProducts()
+    return products
       .filter((item) => item.category === product.category && item.id !== product.id)
       .slice(0, 4);
-  }, [product]);
+  }, [product, products]);
+
+  if (loading) {
+    return null;
+  }
 
   if (!product) {
     return <MissingProduct />;

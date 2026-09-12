@@ -1,5 +1,3 @@
-// Short, human messages only — never dump raw API / stack text into the UI.
-
 const FALLBACK = "Something went wrong. Please try again.";
 
 const RULES = [
@@ -36,7 +34,6 @@ function humanize(message, fallback) {
     if (pattern.test(message)) return text;
   }
 
-  // Keep short, non-technical messages (already written for users).
   if (message.length <= 120 && !looksTechnical(message)) {
     return message;
   }

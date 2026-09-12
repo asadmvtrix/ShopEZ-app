@@ -6,12 +6,12 @@ import Link from "@mui/material/Link";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import BrandMark from "./BrandMark";
-import { getCategories } from "../data/products";
+import { useCatalog } from "../context/catalog-context";
 import { POLICIES } from "../config/store";
 
-const categories = getCategories();
-
 export default function SiteFooter() {
+  const { categories } = useCatalog();
+
   return (
     <Box
       component="footer"
@@ -83,8 +83,8 @@ export default function SiteFooter() {
         <Divider sx={{ my: 3 }} />
 
         <Typography variant="caption" color="text.secondary">
-          ShopEZ is a portfolio project. The catalogue is static and checkout runs against a
-          sandbox &mdash; no card is ever charged.
+          ShopEZ stores the catalogue and orders in Supabase. Checkout payment is still a sandbox
+          &mdash; no card is ever charged.
         </Typography>
       </Container>
     </Box>

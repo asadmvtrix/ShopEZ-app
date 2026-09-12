@@ -30,10 +30,8 @@ import CartBadge from "./CartBadge";
 import { useAuth } from "../context/auth-context";
 import { setFlash } from "../lib/flash";
 import { useCart } from "../context/cart-context";
+import { useCatalog } from "../context/catalog-context";
 import { useColorMode } from "../context/color-mode-context";
-import { getCategories } from "../data/products";
-
-const categories = getCategories();
 
 function categoryPath(category) {
   return `/browse?category=${encodeURIComponent(category)}`;
@@ -42,6 +40,7 @@ function categoryPath(category) {
 export default function Navbar() {
   const { user, logout } = useAuth();
   const { itemCount } = useCart();
+  const { categories } = useCatalog();
   const { mode, toggleMode } = useColorMode();
   const navigate = useNavigate();
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Alert from "@mui/material/Alert";
 import Avatar from "@mui/material/Avatar";
@@ -27,6 +27,8 @@ import { useAuth } from "../context/auth-context";
 import { useCart } from "../context/cart-context";
 import { useColorMode } from "../context/color-mode-context";
 import { setFlash } from "../lib/flash";
+import { listOrders } from "../services/orders";
+import { formatPrice } from "../config/store";
 import { MONO } from "../theme";
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -400,6 +402,114 @@ function DeleteAccount() {
   );
 }
 
+function OrderHistory() {
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+
+    listOrders().then((result) => {
+      if (!active) return;
+      if (!result.success) {
+        setError(result.error);
+        setOrders([]);
+      } else {
+        setError(null);
+        setOrders(result.orders);
+      }
+      setLoading(false);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", py: 1 }}>
+        <CircularProgress size={18} />
+        <Typography variant="body2" color="text.secondary">
+          Loading orders…
+        </Typography>
+      </Stack>
+    );
+  }
+
+  if (error) {
+    return <Alert severity="error">{error}</Alert>;
+  }
+
+  if (orders.length === 0) {
+    return (
+      <Typography variant="body2" color="text.secondary">
+        No orders yet. When you check out, they show up here.
+      </Typography>
+    );
+  }
+
+  return (
+    <Stack spacing={2}>
+      {orders.map((order) => (
+        <Box
+          key={order.id}
+          sx={{
+            border: 1,
+            borderColor: "divider",
+            borderRadius: 1,
+            p: 2,
+          }}
+        >
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1}
+            sx={{ justifyContent: "space-between", alignItems: { sm: "flex-start" }, mb: 1.5 }}
+          >
+            <Box>
+              <Typography sx={{ fontWeight: 600 }}>
+                {order.reference || order.id.slice(0, 8).toUpperCase()}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {new Date(order.createdAt).toLocaleString()}
+              </Typography>
+            </Box>
+            <Typography sx={{ fontFamily: MONO, fontWeight: 600 }}>
+              {formatPrice(order.total)}
+            </Typography>
+          </Stack>
+
+          <Stack spacing={0.75}>
+            {order.items.map((item) => (
+              <Stack
+                key={item.id}
+                direction="row"
+                spacing={2}
+                sx={{ justifyContent: "space-between", gap: 2 }}
+              >
+                <Typography variant="body2" sx={{ minWidth: 0 }}>
+                  {item.quantity}× {item.name}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ flexShrink: 0 }}>
+                  {formatPrice(item.lineTotal)}
+                </Typography>
+              </Stack>
+            ))}
+          </Stack>
+
+          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1.5 }}>
+            {order.brand && order.last4
+              ? `${order.brand} ···· ${order.last4} · `
+              : null}
+            {order.status === "paid_sandbox" ? "Paid (sandbox)" : order.status}
+          </Typography>
+        </Box>
+      ))}
+    </Stack>
+  );
+}
+
 export default function Account() {
   const { user, logout } = useAuth();
   const { itemCount } = useCart();
@@ -481,6 +591,13 @@ export default function Account() {
               Sign out
             </Button>
           </Stack>
+        </Section>
+
+        <Section
+          title="Order history"
+          description="Orders placed with this ShopEZ account."
+        >
+          <OrderHistory />
         </Section>
 
         <Section

@@ -5,12 +5,12 @@ import CardActionArea from "@mui/material/CardActionArea";
 import Typography from "@mui/material/Typography";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ProductImage from "./ProductImage";
-import { getCategorySummaries } from "../data/products";
+import { useCatalog } from "../context/catalog-context";
 import { formatPriceShort } from "../config/store";
 
-const summaries = getCategorySummaries();
-
 export default function CategoryTiles() {
+  const { categorySummaries } = useCatalog();
+
   return (
     <Box
       sx={{
@@ -19,7 +19,7 @@ export default function CategoryTiles() {
         gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(4, 1fr)" },
       }}
     >
-      {summaries.map((summary) => (
+      {categorySummaries.map((summary) => (
         <Card key={summary.category}>
           <CardActionArea
             component={RouterLink}
@@ -40,8 +40,6 @@ export default function CategoryTiles() {
               imagePadding={0.75}
               sx={{ width: 60, flexShrink: 0, borderRadius: 1, border: 1, borderColor: "divider" }}
             />
-            {/* Count and price sit on their own lines so a long category name cannot
-                wrap one tile taller than its neighbours. */}
             <Box sx={{ minWidth: 0, flexGrow: 1 }}>
               <Typography variant="h5" noWrap>
                 {summary.category}
@@ -56,7 +54,10 @@ export default function CategoryTiles() {
             <ChevronRightIcon
               className="category-chevron"
               fontSize="small"
-              sx={{ color: "text.disabled", transition: "transform 220ms cubic-bezier(0.22, 1, 0.36, 1)" }}
+              sx={{
+                color: "text.disabled",
+                transition: "transform 220ms cubic-bezier(0.22, 1, 0.36, 1)",
+              }}
             />
           </CardActionArea>
         </Card>

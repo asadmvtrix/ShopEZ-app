@@ -383,12 +383,12 @@ export function getProducts() {
   return products;
 }
 
-export function getProductById(id) {
-  return products.find((product) => product.id === Number(id));
+export function getProductById(id, list = products) {
+  return list.find((product) => product.id === Number(id));
 }
 
-export function getCategories() {
-  return [...new Set(products.map((product) => product.category))].sort();
+export function getCategories(list = products) {
+  return [...new Set(list.map((product) => product.category))].sort();
 }
 
 // Stock codes are derived rather than stored: the catalogue is small and the id is
@@ -450,9 +450,9 @@ export function getHighlights(product) {
     .filter((fragment) => fragment.length > 2);
 }
 
-export function getCategorySummaries() {
-  return getCategories().map((category) => {
-    const inCategory = products.filter((product) => product.category === category);
+export function getCategorySummaries(list = products) {
+  return getCategories(list).map((category) => {
+    const inCategory = list.filter((product) => product.category === category);
     return {
       category,
       count: inCategory.length,

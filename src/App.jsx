@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import Box from "@mui/material/Box";
 import ColorModeProvider from "./context/ColorModeProvider";
 import AuthProvider from "./context/AuthProvider";
+import CatalogProvider from "./context/CatalogProvider";
 import CartProvider from "./context/CartProvider";
 import Navbar from "./components/Navbar";
 import SiteFooter from "./components/SiteFooter";
@@ -29,47 +30,49 @@ export default function App() {
   return (
     <ColorModeProvider>
       <AuthProvider>
-        <CartProvider>
-          <ScrollToTop />
-          <GlobalErrorBridge />
-          <AppFlash />
-          <ErrorBoundary>
-            <Navbar />
-            <Box component="main" sx={{ flexGrow: 1 }}>
-              <Suspense fallback={<RouteFallback />}>
-                <PageEnter>
-                  <Routes>
-                    <Route path="/" element={<Home />} />
-                    <Route path="/browse" element={<Browse />} />
-                    <Route path="/products/:id" element={<ProductDetails />} />
-                    <Route path="/cart" element={<Cart />} />
-                    <Route
-                      path="/checkout"
-                      element={
-                        <RequireAuth>
-                          <Checkout />
-                        </RequireAuth>
-                      }
-                    />
-                    <Route
-                      path="/account"
-                      element={
-                        <RequireAuth>
-                          <Account />
-                        </RequireAuth>
-                      }
-                    />
-                    <Route path="/auth" element={<Auth />} />
-                    {/* Kept so bookmarks from before the cart/checkout rename still resolve. */}
-                    <Route path="/payment" element={<Navigate to="/checkout" replace />} />
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </PageEnter>
-              </Suspense>
-            </Box>
-            <SiteFooter />
-          </ErrorBoundary>
-        </CartProvider>
+        <CatalogProvider>
+          <CartProvider>
+            <ScrollToTop />
+            <GlobalErrorBridge />
+            <AppFlash />
+            <ErrorBoundary>
+              <Navbar />
+              <Box component="main" sx={{ flexGrow: 1 }}>
+                <Suspense fallback={<RouteFallback />}>
+                  <PageEnter>
+                    <Routes>
+                      <Route path="/" element={<Home />} />
+                      <Route path="/browse" element={<Browse />} />
+                      <Route path="/products/:id" element={<ProductDetails />} />
+                      <Route path="/cart" element={<Cart />} />
+                      <Route
+                        path="/checkout"
+                        element={
+                          <RequireAuth>
+                            <Checkout />
+                          </RequireAuth>
+                        }
+                      />
+                      <Route
+                        path="/account"
+                        element={
+                          <RequireAuth>
+                            <Account />
+                          </RequireAuth>
+                        }
+                      />
+                      <Route path="/auth" element={<Auth />} />
+                      {/* Kept so bookmarks from before the cart/checkout rename still resolve. */}
+                      <Route path="/payment" element={<Navigate to="/checkout" replace />} />
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </PageEnter>
+                </Suspense>
+              </Box>
+              <SiteFooter />
+            </ErrorBoundary>
+          </CartProvider>
+        </CatalogProvider>
       </AuthProvider>
     </ColorModeProvider>
   );

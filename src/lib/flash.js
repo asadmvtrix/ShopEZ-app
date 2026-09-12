@@ -14,19 +14,18 @@ function emit(toast) {
     try {
       listener(toast);
     } catch {
-      // ignore listener failures
+      /* ignore */
     }
   });
 }
 
-/** Persist across a navigation, then show once (auth redirects, sign-out, etc.). */
 export function setFlash(message, tone = "success") {
   const toast = normalise(message, tone);
   if (!toast) return;
   try {
     sessionStorage.setItem(FLASH_KEY, JSON.stringify(toast));
   } catch {
-    // ignore
+    /* ignore */
   }
 }
 
@@ -42,7 +41,6 @@ export function consumeFlash() {
         return normalise(parsed.message, parsed.tone);
       }
     } catch {
-      // Older builds stored a plain string.
       return normalise(raw, "success");
     }
 
@@ -52,7 +50,6 @@ export function consumeFlash() {
   }
 }
 
-/** Live toast without navigating — forms, unexpected failures, etc. */
 export function showToast(message, tone = "success") {
   const toast = normalise(message, tone);
   if (!toast) return;

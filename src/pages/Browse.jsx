@@ -25,14 +25,11 @@ import FilterListIcon from "@mui/icons-material/FilterList";
 import SearchIcon from "@mui/icons-material/Search";
 import ProductCard from "../components/ProductCard";
 import ProductGridSkeleton from "../components/ProductGridSkeleton";
-import { getCategories, getProducts } from "../data/products";
+import { useCatalog } from "../context/catalog-context";
 import { formatPrice } from "../config/store";
 import { consumeAppEnter, useWarmReveal } from "../hooks/useWarmReveal";
 
 const SEARCH_DEBOUNCE_MS = 500;
-
-const allProducts = getProducts();
-const categories = getCategories();
 
 const SORT_OPTIONS = [
   { value: "featured", label: "Featured" },
@@ -56,17 +53,22 @@ const comparators = {
   "name-asc": (a, b) => a.name.localeCompare(b.name),
 };
 
-const categoryCounts = categories.reduce((counts, category) => {
-  counts[category] = allProducts.filter((product) => product.category === category).length;
-  return counts;
-}, {});
-
 export default function Browse() {
+  const { products: allProducts, categories, loading: catalogLoading } = useCatalog();
   const [searchParams, setSearchParams] = useSearchParams();
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [columns, setColumns] = useState(3);
   const [fromAuth] = useState(() => consumeAppEnter());
   const ready = useWarmReveal({ fromAuth });
+
+  const categoryCounts = useMemo(
+    () =>
+      categories.reduce((counts, category) => {
+        counts[category] = allProducts.filter((product) => product.category === category).length;
+        return counts;
+      }, {}),
+    [categories, allProducts]
+  );
 
   // The URL is the source of truth so category links, sorting and search survive
   // a refresh or a shared link.
@@ -144,7 +146,7 @@ export default function Browse() {
 
     const comparator = comparators[sort];
     return comparator ? [...filtered].sort(comparator) : filtered;
-  }, [category, priceRange, search, sort]);
+  }, [allProducts, category, priceRange, search, sort]);
 
   const activeFilters = [
     category !== "All" && { key: "category", label: category },
@@ -378,7 +380,7 @@ export default function Browse() {
                 Clear filters
               </Button>
             </Paper>
-          ) : !ready ? (
+          ) : !ready || catalogLoading ? (
             <ProductGridSkeleton count={9} columns={columns} />
           ) : (
             <Box

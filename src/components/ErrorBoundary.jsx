@@ -7,10 +7,6 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { MONO } from "../theme";
 
-/**
- * Catches render/lazy-load crashes so the whole shell doesn’t go blank.
- * Real apps show a calm recovery screen — not a stack trace.
- */
 export default class ErrorBoundary extends Component {
   state = { crashed: false };
 

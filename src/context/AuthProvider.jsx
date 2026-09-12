@@ -315,7 +315,7 @@ export default function AuthProvider({ children }) {
           success: false,
           error:
             error.message?.includes("Could not find the function") || error.code === "PGRST202"
-              ? "Account deletion isn’t set up yet. Contact support or try again later."
+              ? "Account deletion isn’t set up yet. Run supabase/setup.sql in the Supabase SQL editor, then try again."
               : friendlyAuthError(error),
         };
       }
