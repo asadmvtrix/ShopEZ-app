@@ -1,5 +1,4 @@
 import { useCallback, useState } from "react";
-import { createOrder } from "../services/orders";
 import { startStripeCheckout } from "../services/stripe";
 import { toUserMessage } from "../lib/errors";
 
@@ -7,24 +6,12 @@ export function usePayment() {
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState(null);
 
-  const payWithStripe = useCallback(async ({ userId, items }) => {
+  const payWithStripe = useCallback(async ({ items }) => {
     setStatus("processing");
     setError(null);
 
     try {
-      const pending = await createOrder({
-        userId,
-        items,
-        status: "pending",
-      });
-
-      if (!pending.success) {
-        setError(pending.error);
-        setStatus("failed");
-        return { success: false };
-      }
-
-      const session = await startStripeCheckout(pending.order.id);
+      const session = await startStripeCheckout(items);
       if (!session.success) {
         setError(session.error);
         setStatus("failed");

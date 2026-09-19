@@ -14,13 +14,13 @@ async function authHeaders() {
   };
 }
 
-export async function startStripeCheckout(orderId) {
+export async function startStripeCheckout(items) {
   try {
     const headers = await authHeaders();
     const response = await fetch("/api/create-checkout-session", {
       method: "POST",
       headers,
-      body: JSON.stringify({ orderId }),
+      body: JSON.stringify({ items }),
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {

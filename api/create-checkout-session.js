@@ -7,8 +7,46 @@ import {
   siteOrigin,
 } from "./_lib/http.js";
 
+const TAX_RATE = 0.08;
+const SHIPPING_FEE = 9.99;
+const FREE_SHIPPING_THRESHOLD = 99;
+
 function toCents(amount) {
   return Math.round(Number(amount) * 100);
+}
+
+function calculateTotals(subtotal) {
+  const shipping =
+    subtotal >= FREE_SHIPPING_THRESHOLD || subtotal === 0 ? 0 : SHIPPING_FEE;
+  const tax = subtotal * TAX_RATE;
+  return {
+    subtotal,
+    shipping,
+    tax,
+    total: subtotal + shipping + tax,
+  };
+}
+
+function normalizeItems(raw) {
+  if (!Array.isArray(raw) || raw.length === 0) return [];
+  return raw
+    .map((item) => {
+      const product = item?.product || {};
+      const productId = Number(item?.id ?? product.id);
+      const name = String(product.name || item?.product_name || "").trim();
+      const unitPrice = Number(product.price ?? item?.unit_price);
+      const quantity = Number(item?.quantity);
+      if (!name || !Number.isFinite(unitPrice) || unitPrice < 0) return null;
+      if (!Number.isFinite(quantity) || quantity < 1) return null;
+      return {
+        product_id: Number.isFinite(productId) ? productId : null,
+        product_name: name,
+        unit_price: unitPrice,
+        quantity: Math.min(Math.floor(quantity), 10),
+        line_total: Number((unitPrice * Math.min(Math.floor(quantity), 10)).toFixed(2)),
+      };
+    })
+    .filter(Boolean);
 }
 
 export default async function handler(req, res) {
@@ -25,62 +63,60 @@ export default async function handler(req, res) {
   try {
     const { user } = await requireUser(req);
     const body = await readJson(req);
-    const orderId = body?.orderId;
-    if (!orderId) {
-      sendJson(res, 400, { error: "Missing orderId." });
+    const lines = normalizeItems(body?.items);
+
+    if (!lines.length) {
+      sendJson(res, 400, { error: "Your cart is empty." });
       return;
     }
 
+    const subtotal = lines.reduce((sum, line) => sum + line.line_total, 0);
+    const totals = calculateTotals(subtotal);
     const admin = getAdminClient();
+
     const { data: order, error: orderError } = await admin
       .from("orders")
-      .select(
-        `
-        id,
-        user_id,
-        status,
-        subtotal,
-        shipping,
-        tax,
-        total,
-        order_items (
-          product_name,
-          unit_price,
-          quantity
-        )
-      `
-      )
-      .eq("id", orderId)
-      .maybeSingle();
+      .insert({
+        user_id: user.id,
+        status: "pending",
+        subtotal: Number(totals.subtotal.toFixed(2)),
+        shipping: Number(totals.shipping.toFixed(2)),
+        tax: Number(totals.tax.toFixed(2)),
+        total: Number(totals.total.toFixed(2)),
+      })
+      .select("id, user_id, status, subtotal, shipping, tax, total")
+      .single();
 
-    if (orderError) {
+    if (orderError || !order) {
       sendJson(res, 500, {
-        error: orderError.message || "Could not load the order.",
+        error: orderError?.message || "Could not create the order.",
       });
       return;
     }
 
-    if (!order) {
-      sendJson(res, 404, {
-        error: "Order was not saved. Check Supabase orders permissions and try again.",
+    const { error: itemsError } = await admin.from("order_items").insert(
+      lines.map((line) => ({
+        order_id: order.id,
+        product_id: line.product_id,
+        product_name: line.product_name,
+        unit_price: line.unit_price,
+        quantity: line.quantity,
+        line_total: line.line_total,
+      }))
+    );
+
+    if (itemsError) {
+      await admin.from("orders").delete().eq("id", order.id);
+      sendJson(res, 500, {
+        error: itemsError.message || "Could not save order items.",
       });
-      return;
-    }
-
-    if (order.user_id !== user.id) {
-      sendJson(res, 403, { error: "You don’t own this order." });
-      return;
-    }
-
-    if (order.status !== "pending") {
-      sendJson(res, 409, { error: "This order is no longer awaiting payment." });
       return;
     }
 
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
     const origin = siteOrigin(req);
 
-    const lineItems = (order.order_items || []).map((item) => ({
+    const lineItems = lines.map((item) => ({
       quantity: item.quantity,
       price_data: {
         currency: "usd",
@@ -111,11 +147,6 @@ export default async function handler(req, res) {
       });
     }
 
-    if (!lineItems.length) {
-      sendJson(res, 400, { error: "This order has no line items." });
-      return;
-    }
-
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       customer_email: user.email,
@@ -135,7 +166,10 @@ export default async function handler(req, res) {
       },
     });
 
-    await admin.from("orders").update({ payment_reference: session.id }).eq("id", order.id);
+    await admin
+      .from("orders")
+      .update({ payment_reference: session.id })
+      .eq("id", order.id);
 
     sendJson(res, 200, { url: session.url, sessionId: session.id });
   } catch (error) {
