@@ -8,16 +8,12 @@ import Container from "@mui/material/Container";
 import Divider from "@mui/material/Divider";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
-import Step from "@mui/material/Step";
-import StepLabel from "@mui/material/StepLabel";
-import Stepper from "@mui/material/Stepper";
 import Typography from "@mui/material/Typography";
-import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutlined";
+import CheckoutProgress from "../components/CheckoutProgress";
 import { useCart } from "../context/cart-context";
 import { fetchCheckoutSession } from "../services/stripe";
 import { formatPrice } from "../config/store";
-
-const STEPS = ["Cart", "Payment", "Confirmation"];
+import { MONO } from "../theme";
 
 function SectionLabel({ children }) {
   return (
@@ -38,7 +34,11 @@ function DetailRow({ label, value, strong = false }) {
       </Typography>
       <Typography
         variant={strong ? "h5" : "body2"}
-        sx={{ textAlign: "right", wordBreak: "break-word" }}
+        sx={{
+          textAlign: "right",
+          wordBreak: "break-word",
+          fontFamily: strong ? MONO : "inherit",
+        }}
       >
         {value}
       </Typography>
@@ -60,34 +60,6 @@ function formatPaidWith(order) {
   }
   if (order.status === "paid") return "Card via Stripe";
   return "Processing";
-}
-
-function CheckoutShell({ children, title }) {
-  return (
-    <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 } }}>
-      <Typography variant="h1" gutterBottom>
-        {title}
-      </Typography>
-
-      <Stepper
-        activeStep={2}
-        sx={{
-          maxWidth: 520,
-          my: 3,
-          "& .MuiStep-root": { px: { xs: 0.25, sm: 1 } },
-          "& .MuiStepLabel-label": { fontSize: { xs: "0.7rem", sm: "0.875rem" } },
-        }}
-      >
-        {STEPS.map((step) => (
-          <Step key={step} completed>
-            <StepLabel>{step}</StepLabel>
-          </Step>
-        ))}
-      </Stepper>
-
-      {children}
-    </Container>
-  );
 }
 
 export default function CheckoutSuccess() {
@@ -125,111 +97,146 @@ export default function CheckoutSuccess() {
 
   if (state.loading) {
     return (
-      <CheckoutShell title="Confirmation">
-        <Box sx={{ py: { xs: 4, md: 6 }, textAlign: "center" }}>
+      <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 } }}>
+        <Typography variant="h1" gutterBottom>
+          Confirmation
+        </Typography>
+        <CheckoutProgress step={2} />
+        <Box sx={{ py: 6, textAlign: "center" }}>
           <CircularProgress size={28} />
           <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
             Confirming your payment…
           </Typography>
         </Box>
-      </CheckoutShell>
+      </Container>
     );
   }
 
   if (state.error || !state.order) {
     return (
-      <CheckoutShell title="Confirmation">
-        <Paper variant="outlined" sx={{ p: { xs: 2, sm: 2.5 }, maxWidth: 560 }}>
-          <Alert severity="error" sx={{ mb: 2.5 }}>
-            {state.error || "Couldn’t confirm this payment."}
-          </Alert>
-          <Stack spacing={1.5}>
-            <Button
-              component={RouterLink}
-              to="/account"
-              variant="contained"
-              color="secondary"
-              size="large"
-            >
-              Check order history
-            </Button>
-            <Button component={RouterLink} to="/checkout" variant="outlined" size="large">
-              Back to checkout
-            </Button>
-          </Stack>
-        </Paper>
-      </CheckoutShell>
+      <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 } }}>
+        <Typography variant="h1" gutterBottom>
+          Confirmation
+        </Typography>
+        <CheckoutProgress step={2} />
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr", md: "1fr 340px" },
+            gap: { xs: 3, md: 4 },
+            alignItems: "start",
+          }}
+        >
+          <Paper variant="outlined" sx={{ p: { xs: 2, sm: 2.5 } }}>
+            <Alert severity="error" sx={{ mb: 2.5 }}>
+              {state.error || "Couldn’t confirm this payment."}
+            </Alert>
+            <Stack spacing={1.5} direction={{ xs: "column", sm: "row" }}>
+              <Button
+                component={RouterLink}
+                to="/account"
+                variant="contained"
+                color="secondary"
+                size="large"
+              >
+                Check order history
+              </Button>
+              <Button component={RouterLink} to="/checkout" variant="outlined" size="large">
+                Back to checkout
+              </Button>
+            </Stack>
+          </Paper>
+        </Box>
+      </Container>
     );
   }
 
   const order = state.order;
   const confirmed = order.status === "paid";
+  const placed = order.paidAt
+    ? new Date(order.paidAt).toLocaleString(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      })
+    : "—";
 
   return (
-    <CheckoutShell title={confirmed ? "Order confirmed" : "Payment received"}>
-      <Box sx={{ maxWidth: 560 }}>
-        <SectionLabel>Receipt</SectionLabel>
-        <Paper variant="outlined" sx={{ p: { xs: 2, sm: 2.5 } }}>
-          <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 1.5 }}>
-            <CheckCircleOutlineIcon
-              fontSize="small"
-              sx={{ color: confirmed ? "success.main" : "text.secondary" }}
-            />
-            <Typography variant="h5">
-              {confirmed ? "Paid with Stripe" : "Payment processing"}
+    <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 } }}>
+      <Typography variant="h1" gutterBottom>
+        {confirmed ? "Order confirmed" : "Payment received"}
+      </Typography>
+
+      <CheckoutProgress step={2} />
+
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: { xs: "1fr", md: "1fr 340px" },
+          gap: { xs: 3, md: 4 },
+          alignItems: "start",
+        }}
+      >
+        <Box>
+          <SectionLabel>Order details</SectionLabel>
+          <Paper variant="outlined" sx={{ p: { xs: 2, sm: 2.5 } }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
+              {confirmed
+                ? "Payment went through. Your order is saved in Account → Orders."
+                : "Stripe accepted the payment. Status may take a moment to update in your account."}
             </Typography>
-          </Stack>
 
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
-            You’re all set. A receipt is on your account email, and this order is in your
-            history.
-          </Typography>
+            <Stack spacing={1.25}>
+              <DetailRow label="Order" value={`#${shortOrderId(order.id)}`} />
+              <DetailRow label="Paid with" value={formatPaidWith(order)} />
+              <DetailRow label="Placed" value={placed} />
+            </Stack>
 
-          <Divider sx={{ mb: 2 }} />
+            {order.status === "pending" && (
+              <Alert severity="info" sx={{ mt: 2.5 }}>
+                Final order status may take a moment to update.
+              </Alert>
+            )}
+          </Paper>
+        </Box>
 
-          <Stack spacing={1.25} sx={{ mb: 2 }}>
-            <DetailRow label="Order" value={`#${shortOrderId(order.id)}`} />
-            <DetailRow label="Paid with" value={formatPaidWith(order)} />
-            <DetailRow
-              label="Placed"
-              value={
-                order.paidAt
-                  ? new Date(order.paidAt).toLocaleString(undefined, {
-                      dateStyle: "medium",
-                      timeStyle: "short",
-                    })
-                  : "—"
-              }
-            />
-          </Stack>
-
-          <Divider sx={{ mb: 2 }} />
-
-          <DetailRow label="Total" value={formatPrice(order.amount)} strong />
-
-          {order.status === "pending" && (
-            <Alert severity="info" sx={{ mt: 2.5 }}>
-              Stripe confirmed the session. Final order status may take a moment to update.
-            </Alert>
-          )}
-
-          <Stack spacing={1.5} sx={{ mt: 3 }}>
-            <Button
-              component={RouterLink}
-              to="/account"
-              variant="contained"
-              color="secondary"
-              size="large"
-              fullWidth
-            >
-              View order history
-            </Button>
-            <Button component={RouterLink} to="/browse" variant="outlined" size="large" fullWidth>
-              Continue shopping
-            </Button>
-          </Stack>
-        </Paper>
+        <Box
+          sx={{
+            position: { md: "sticky" },
+            top: 88,
+          }}
+        >
+          <Paper variant="outlined" sx={{ p: 3 }}>
+            <Typography variant="h3" gutterBottom>
+              Summary
+            </Typography>
+            <Box sx={{ my: 2 }}>
+              <DetailRow label="Total paid" value={formatPrice(order.amount)} strong />
+            </Box>
+            <Divider sx={{ mb: 2 }} />
+            <Stack spacing={1.5}>
+              <Button
+                component={RouterLink}
+                to="/account"
+                variant="contained"
+                color="secondary"
+                size="large"
+                fullWidth
+              >
+                View order history
+              </Button>
+              <Button
+                component={RouterLink}
+                to="/browse"
+                variant="outlined"
+                size="large"
+                fullWidth
+              >
+                Continue shopping
+              </Button>
+            </Stack>
+          </Paper>
+        </Box>
       </Box>
-    </CheckoutShell>
+    </Container>
   );
 }

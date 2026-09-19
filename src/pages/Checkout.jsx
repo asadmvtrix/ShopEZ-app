@@ -7,12 +7,10 @@ import CircularProgress from "@mui/material/CircularProgress";
 import Container from "@mui/material/Container";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
-import Step from "@mui/material/Step";
-import StepLabel from "@mui/material/StepLabel";
-import Stepper from "@mui/material/Stepper";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+import CheckoutProgress from "../components/CheckoutProgress";
 import OrderSummary from "../components/OrderSummary";
 import { useCart } from "../context/cart-context";
 import { useAuth } from "../context/auth-context";
@@ -20,8 +18,6 @@ import { usePayment } from "../hooks/usePayment";
 import { isStripeConfigured } from "../services/stripe";
 import { calculateTotals, formatPrice } from "../config/store";
 import { MONO } from "../theme";
-
-const STEPS = ["Cart", "Payment", "Confirmation"];
 
 function SectionLabel({ children }) {
   return (
@@ -74,21 +70,7 @@ export default function Checkout() {
         Checkout
       </Typography>
 
-      <Stepper
-        activeStep={1}
-        sx={{
-          maxWidth: 520,
-          my: 3,
-          "& .MuiStep-root": { px: { xs: 0.25, sm: 1 } },
-          "& .MuiStepLabel-label": { fontSize: { xs: "0.7rem", sm: "0.875rem" } },
-        }}
-      >
-        {STEPS.map((step) => (
-          <Step key={step}>
-            <StepLabel>{step}</StepLabel>
-          </Step>
-        ))}
-      </Stepper>
+      <CheckoutProgress step={1} />
 
       <Box
         sx={{
@@ -109,7 +91,7 @@ export default function Checkout() {
           <TextField
             label="Email"
             value={user.email}
-            helperText="Receipts go to your ShopEZ account email."
+            helperText="This email is used for your ShopEZ account and Stripe checkout."
             slotProps={{ input: { readOnly: true } }}
             sx={{ mb: 3 }}
           />
