@@ -1,18 +1,24 @@
-import Stripe from "stripe";
-import { getAdminClient, requireUser, readJson, sendJson, siteOrigin } from "./_lib/http.js";
+const Stripe = require("stripe");
+const {
+  getAdminClient,
+  requireUser,
+  readJson,
+  sendJson,
+  siteOrigin,
+} = require("./_lib/http");
 
 function toCents(amount) {
   return Math.round(Number(amount) * 100);
 }
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
     sendJson(res, 405, { error: "Method not allowed." });
     return;
   }
 
   if (!process.env.STRIPE_SECRET_KEY) {
-    sendJson(res, 503, { error: "Stripe is not configured on the server." });
+    sendJson(res, 503, { error: "Stripe secret key is missing on the server." });
     return;
   }
 
@@ -45,10 +51,19 @@ export default async function handler(req, res) {
       `
       )
       .eq("id", orderId)
-      .single();
+      .maybeSingle();
 
-    if (orderError || !order) {
-      sendJson(res, 404, { error: "Order not found." });
+    if (orderError) {
+      sendJson(res, 500, {
+        error: orderError.message || "Could not load the order.",
+      });
+      return;
+    }
+
+    if (!order) {
+      sendJson(res, 404, {
+        error: "Order was not saved. Check Supabase orders permissions and try again.",
+      });
       return;
     }
 
@@ -65,7 +80,7 @@ export default async function handler(req, res) {
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
     const origin = siteOrigin(req);
 
-    const lineItems = (order.order_items ?? []).map((item) => ({
+    const lineItems = (order.order_items || []).map((item) => ({
       quantity: item.quantity,
       price_data: {
         currency: "usd",
@@ -96,6 +111,11 @@ export default async function handler(req, res) {
       });
     }
 
+    if (!lineItems.length) {
+      sendJson(res, 400, { error: "This order has no line items." });
+      return;
+    }
+
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       customer_email: user.email,
@@ -115,10 +135,7 @@ export default async function handler(req, res) {
       },
     });
 
-    await admin
-      .from("orders")
-      .update({ payment_reference: session.id })
-      .eq("id", order.id);
+    await admin.from("orders").update({ payment_reference: session.id }).eq("id", order.id);
 
     sendJson(res, 200, { url: session.url, sessionId: session.id });
   } catch (error) {
@@ -126,4 +143,4 @@ export default async function handler(req, res) {
       error: error.message || "Could not start checkout.",
     });
   }
-}
+};

@@ -24,9 +24,15 @@ export async function startStripeCheckout(orderId) {
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
+      const detail =
+        typeof payload.error === "string" && payload.error.trim()
+          ? payload.error.trim()
+          : response.status === 404
+            ? "Checkout API was not found. Redeploy after pushing the /api folder."
+            : "Couldn’t start Stripe Checkout.";
       return {
         success: false,
-        error: toUserMessage(payload.error, "Couldn’t start Stripe Checkout."),
+        error: toUserMessage(detail, detail),
       };
     }
     if (!payload.url) {

@@ -10,7 +10,6 @@ const RULES = [
   [/rate limit|too many requests|over_request_rate/i, "Too many attempts. Wait a moment and try again."],
   [/jwt expired|session.*expired|refresh.?token/i, "Your session expired. Sign in again."],
   [/not authorized|unauthorized|403/i, "You don’t have permission to do that."],
-  [/not found|404/i, "We couldn’t find what you were looking for."],
 ];
 
 export function toUserMessage(error, fallback = FALLBACK) {
@@ -34,7 +33,7 @@ function humanize(message, fallback) {
     if (pattern.test(message)) return text;
   }
 
-  if (message.length <= 120 && !looksTechnical(message)) {
+  if (message.length <= 160 && !looksTechnical(message)) {
     return message;
   }
 

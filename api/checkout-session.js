@@ -1,7 +1,7 @@
-import Stripe from "stripe";
-import { getAdminClient, requireUser, sendJson } from "./_lib/http.js";
+const Stripe = require("stripe");
+const { getAdminClient, requireUser, sendJson } = require("./_lib/http");
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== "GET") {
     sendJson(res, 405, { error: "Method not allowed." });
     return;
@@ -14,7 +14,9 @@ export default async function handler(req, res) {
 
   try {
     const { user } = await requireUser(req);
-    const url = new URL(req.url, "http://localhost");
+    const host = req.headers["x-forwarded-host"] || req.headers.host;
+    const proto = req.headers["x-forwarded-proto"] || "https";
+    const url = new URL(req.url, `${proto}://${host}`);
     const sessionId = url.searchParams.get("session_id");
     if (!sessionId) {
       sendJson(res, 400, { error: "Missing session_id." });
@@ -46,10 +48,10 @@ export default async function handler(req, res) {
       `
       )
       .eq("id", orderId)
-      .single();
+      .maybeSingle();
 
     if (error || !order || order.user_id !== user.id) {
-      sendJson(res, 404, { error: "Order not found." });
+      sendJson(res, 404, { error: "Order not found for this payment." });
       return;
     }
 
@@ -82,4 +84,4 @@ export default async function handler(req, res) {
       error: error.message || "Could not load payment.",
     });
   }
-}
+};
