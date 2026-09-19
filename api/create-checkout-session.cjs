@@ -5,7 +5,7 @@ const {
   readJson,
   sendJson,
   siteOrigin,
-} = require("./_lib/http");
+} = require("./_lib/http.cjs");
 
 function toCents(amount) {
   return Math.round(Number(amount) * 100);

@@ -1,5 +1,5 @@
 const Stripe = require("stripe");
-const { getAdminClient, requireUser, sendJson } = require("./_lib/http");
+const { getAdminClient, requireUser, sendJson } = require("./_lib/http.cjs");
 
 module.exports = async function handler(req, res) {
   if (req.method !== "GET") {

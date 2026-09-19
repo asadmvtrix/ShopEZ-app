@@ -27,9 +27,11 @@ export async function startStripeCheckout(orderId) {
       const detail =
         typeof payload.error === "string" && payload.error.trim()
           ? payload.error.trim()
-          : response.status === 404
-            ? "Checkout API was not found. Redeploy after pushing the /api folder."
-            : "Couldn’t start Stripe Checkout.";
+          : response.status === 500
+            ? "Checkout server error. Check Vercel function logs for /api/create-checkout-session."
+            : response.status === 404
+              ? "Checkout API was not found. Redeploy after pushing the /api folder."
+              : "Couldn’t start Stripe Checkout.";
       return {
         success: false,
         error: toUserMessage(detail, detail),
