@@ -1,57 +1,48 @@
 import { useCallback, useState } from "react";
-import { submitPayment } from "../services/paymentService";
 import { createOrder } from "../services/orders";
+import { startStripeCheckout } from "../services/stripe";
 import { toUserMessage } from "../lib/errors";
 
 export function usePayment() {
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState(null);
-  const [receipt, setReceipt] = useState(null);
 
-  const pay = useCallback(async ({ userId, items, orderPayload }) => {
+  const payWithStripe = useCallback(async ({ userId, items }) => {
     setStatus("processing");
     setError(null);
 
     try {
-      const payment = await submitPayment(orderPayload);
-
-      const saved = await createOrder({
+      const pending = await createOrder({
         userId,
         items,
-        payment: {
-          reference: payment.reference,
-          brand: payment.brand,
-          last4: payment.last4,
-        },
+        status: "pending",
       });
 
-      if (!saved.success) {
-        setError(saved.error);
+      if (!pending.success) {
+        setError(pending.error);
         setStatus("failed");
         return { success: false };
       }
 
-      const receiptPayload = {
-        ...payment,
-        orderId: saved.order.id,
-        amount: saved.order.amount,
-      };
+      const session = await startStripeCheckout(pending.order.id);
+      if (!session.success) {
+        setError(session.error);
+        setStatus("failed");
+        return { success: false };
+      }
 
-      setReceipt(receiptPayload);
-      setStatus("succeeded");
-      return { success: true, receipt: receiptPayload };
+      window.location.assign(session.url);
+      return { success: true, redirected: true };
     } catch (cause) {
-      setError(toUserMessage(cause, "Payment failed. Please try again."));
+      setError(toUserMessage(cause, "Couldn’t start Stripe Checkout."));
       setStatus("failed");
       return { success: false };
     }
   }, []);
 
   return {
-    pay,
+    payWithStripe,
     error,
-    receipt,
     isProcessing: status === "processing",
-    isComplete: status === "succeeded",
   };
 }

@@ -6,7 +6,7 @@ function fail(error, fallback = "Couldn’t save your order. Please try again.")
   return { success: false, error: toUserMessage(error, fallback) };
 }
 
-export async function createOrder({ userId, items, payment }) {
+export async function createOrder({ userId, items, payment, status = "pending" }) {
   if (!supabase) {
     return fail("Supabase is not configured.");
   }
@@ -27,7 +27,7 @@ export async function createOrder({ userId, items, payment }) {
     .from("orders")
     .insert({
       user_id: userId,
-      status: "paid_sandbox",
+      status,
       subtotal: Number(totals.subtotal.toFixed(2)),
       shipping: Number(totals.shipping.toFixed(2)),
       tax: Number(totals.tax.toFixed(2)),
@@ -127,4 +127,19 @@ export async function listOrders() {
   }));
 
   return { success: true, orders, error: null };
+}
+
+export function formatOrderStatus(status) {
+  switch (status) {
+    case "paid":
+      return "Paid";
+    case "pending":
+      return "Awaiting payment";
+    case "failed":
+      return "Failed";
+    case "paid_sandbox":
+      return "Paid";
+    default:
+      return status || "Unknown";
+  }
 }

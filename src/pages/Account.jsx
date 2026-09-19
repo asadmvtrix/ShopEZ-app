@@ -27,7 +27,7 @@ import { useAuth } from "../context/auth-context";
 import { useCart } from "../context/cart-context";
 import { useColorMode } from "../context/color-mode-context";
 import { setFlash } from "../lib/flash";
-import { listOrders } from "../services/orders";
+import { formatOrderStatus, listOrders } from "../services/orders";
 import { formatPrice } from "../config/store";
 import { MONO } from "../theme";
 
@@ -502,7 +502,7 @@ function OrderHistory() {
             {order.brand && order.last4
               ? `${order.brand} ···· ${order.last4} · `
               : null}
-            {order.status === "paid_sandbox" ? "Paid (sandbox)" : order.status}
+            {formatOrderStatus(order.status)}
           </Typography>
         </Box>
       ))}

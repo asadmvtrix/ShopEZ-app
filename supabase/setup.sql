@@ -92,6 +92,11 @@ create policy "Users insert own order items"
     )
   );
 
+grant usage on schema public to anon, authenticated;
+grant select on table public.products to anon, authenticated;
+grant select, insert on table public.orders to authenticated;
+grant select, insert on table public.order_items to authenticated;
+
 -- ---------------------------------------------------------------------------
 -- Account deletion (used by the Account page)
 -- ---------------------------------------------------------------------------

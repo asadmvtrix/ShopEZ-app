@@ -83,8 +83,7 @@ export default function SiteFooter() {
         <Divider sx={{ my: 3 }} />
 
         <Typography variant="caption" color="text.secondary">
-          ShopEZ stores the catalogue and orders in Supabase. Checkout payment is still a sandbox
-          &mdash; no card is ever charged.
+          © {new Date().getFullYear()} ShopEZ. All rights reserved.
         </Typography>
       </Container>
     </Box>

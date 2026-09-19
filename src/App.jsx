@@ -20,6 +20,7 @@ const Browse = lazy(() => import("./pages/Browse"));
 const ProductDetails = lazy(() => import("./pages/ProductDetails"));
 const Cart = lazy(() => import("./pages/Cart"));
 const Checkout = lazy(() => import("./pages/Checkout"));
+const CheckoutSuccess = lazy(() => import("./pages/CheckoutSuccess"));
 const Auth = lazy(() => import("./pages/Auth"));
 const Account = lazy(() => import("./pages/Account"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -48,6 +49,14 @@ export default function App() {
                         element={
                           <RequireAuth>
                             <Checkout />
+                          </RequireAuth>
+                        }
+                      />
+                      <Route
+                        path="/checkout/success"
+                        element={
+                          <RequireAuth>
+                            <CheckoutSuccess />
                           </RequireAuth>
                         }
                       />
