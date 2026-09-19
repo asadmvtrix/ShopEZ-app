@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Alert from "@mui/material/Alert";
 import Avatar from "@mui/material/Avatar";
@@ -12,6 +12,9 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
 import DialogTitle from "@mui/material/DialogTitle";
 import Divider from "@mui/material/Divider";
+import List from "@mui/material/List";
+import ListItemButton from "@mui/material/ListItemButton";
+import ListItemText from "@mui/material/ListItemText";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
@@ -33,17 +36,33 @@ import { MONO } from "../theme";
 
 const MIN_PASSWORD_LENGTH = 8;
 
-function Section({ title, description, children }) {
+const NAV = [
+  { id: "profile", label: "Profile" },
+  { id: "orders", label: "Orders" },
+  { id: "security", label: "Security" },
+  { id: "appearance", label: "Appearance" },
+  { id: "danger", label: "Delete account" },
+];
+
+function shortOrderId(id) {
+  if (!id) return "—";
+  return String(id).replace(/-/g, "").slice(0, 8).toUpperCase();
+}
+
+function Panel({ title, description, children }) {
   return (
-    <Paper variant="outlined" sx={{ p: { xs: 2.5, md: 3 } }}>
-      <Typography variant="h3">{title}</Typography>
+    <Box>
+      <Typography variant="h2" component="h2">
+        {title}
+      </Typography>
       {description && (
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75, mb: 3 }}>
           {description}
         </Typography>
       )}
-      <Box sx={{ mt: 2.5 }}>{children}</Box>
-    </Paper>
+      {!description && <Box sx={{ mb: 3 }} />}
+      {children}
+    </Box>
   );
 }
 
@@ -238,7 +257,7 @@ function LinkedAccounts() {
           No sign-in methods connected yet.
         </Typography>
       ) : (
-        <Box>
+        <Paper variant="outlined" sx={{ overflow: "hidden" }}>
           {rows.map((row, index) => (
             <Box key={row.id}>
               {index > 0 && <Divider />}
@@ -247,6 +266,7 @@ function LinkedAccounts() {
                 spacing={1.5}
                 sx={{
                   alignItems: "center",
+                  px: 2,
                   py: 1.75,
                   minHeight: 64,
                 }}
@@ -282,14 +302,14 @@ function LinkedAccounts() {
                   color="inherit"
                   disabled={!canDisconnect || busy === row.id}
                   onClick={() => handleDisconnect(row.id)}
-                  sx={{ flexShrink: 0, textTransform: "none", fontWeight: 600 }}
+                  sx={{ flexShrink: 0 }}
                 >
                   {busy === row.id ? <CircularProgress size={16} /> : "Disconnect"}
                 </Button>
               </Stack>
             </Box>
           ))}
-        </Box>
+        </Paper>
       )}
 
       {!canDisconnect && rows.length > 0 && (
@@ -310,7 +330,7 @@ function LinkedAccounts() {
               <GoogleGlyph sx={{ width: 16, height: 16 }} />
             )
           }
-          sx={{ alignSelf: "flex-start", textTransform: "none", fontWeight: 600 }}
+          sx={{ alignSelf: "flex-start" }}
         >
           Connect Google
         </Button>
@@ -402,7 +422,95 @@ function DeleteAccount() {
   );
 }
 
-function OrderHistory() {
+function OrderSummaryCard({ order }) {
+  const paidWith =
+    order.brand && order.last4
+      ? `${String(order.brand)
+          .toLowerCase()
+          .replace(/\b\w/g, (c) => c.toUpperCase())} ·••${order.last4}`
+      : null;
+
+  return (
+    <Paper variant="outlined" sx={{ overflow: "hidden" }}>
+      <Box
+        sx={{
+          px: { xs: 2, sm: 2.5 },
+          py: 2,
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 1.5,
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          bgcolor: "action.hover",
+          borderBottom: 1,
+          borderColor: "divider",
+        }}
+      >
+        <Box>
+          <Typography sx={{ fontWeight: 600 }}>Order #{shortOrderId(order.id)}</Typography>
+          <Typography variant="body2" color="text.secondary">
+            {new Date(order.createdAt).toLocaleString(undefined, {
+              dateStyle: "medium",
+              timeStyle: "short",
+            })}
+          </Typography>
+        </Box>
+        <Stack spacing={0.25} sx={{ alignItems: { xs: "flex-start", sm: "flex-end" } }}>
+          <Typography sx={{ fontFamily: MONO, fontWeight: 600 }}>
+            {formatPrice(order.total)}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            {formatOrderStatus(order.status)}
+            {paidWith ? ` · ${paidWith}` : ""}
+          </Typography>
+        </Stack>
+      </Box>
+
+      <Stack spacing={1} sx={{ px: { xs: 2, sm: 2.5 }, py: 2 }}>
+        {order.items.map((item) => (
+          <Stack
+            key={item.id}
+            direction="row"
+            spacing={2}
+            sx={{ justifyContent: "space-between", gap: 2 }}
+          >
+            <Typography variant="body2" color="text.secondary" sx={{ minWidth: 0 }}>
+              {item.name}
+              <Box component="span" sx={{ color: "text.disabled" }}>
+                {" "}
+                ×{item.quantity}
+              </Box>
+            </Typography>
+            <Typography variant="body2" sx={{ flexShrink: 0, fontFamily: MONO }}>
+              {formatPrice(item.lineTotal)}
+            </Typography>
+          </Stack>
+        ))}
+      </Stack>
+
+      <Divider />
+
+      <Stack
+        direction="row"
+        spacing={2}
+        sx={{
+          px: { xs: 2, sm: 2.5 },
+          py: 1.75,
+          justifyContent: "space-between",
+        }}
+      >
+        <Typography variant="body2" color="text.secondary">
+          Total
+        </Typography>
+        <Typography variant="h5" sx={{ fontFamily: MONO }}>
+          {formatPrice(order.total)}
+        </Typography>
+      </Stack>
+    </Paper>
+  );
+}
+
+function OrdersPanel() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -427,9 +535,14 @@ function OrderHistory() {
     };
   }, []);
 
+  const successful = useMemo(
+    () => orders.filter((order) => order.status === "paid" || order.status === "paid_sandbox"),
+    [orders]
+  );
+
   if (loading) {
     return (
-      <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", py: 1 }}>
+      <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", py: 2 }}>
         <CircularProgress size={18} />
         <Typography variant="body2" color="text.secondary">
           Loading orders…
@@ -442,69 +555,20 @@ function OrderHistory() {
     return <Alert severity="error">{error}</Alert>;
   }
 
-  if (orders.length === 0) {
+  if (successful.length === 0) {
     return (
-      <Typography variant="body2" color="text.secondary">
-        No orders yet. When you check out, they show up here.
-      </Typography>
+      <Paper variant="outlined" sx={{ p: 3 }}>
+        <Typography variant="body2" color="text.secondary">
+          No completed orders yet. Paid checkouts will show up here as order summaries.
+        </Typography>
+      </Paper>
     );
   }
 
   return (
     <Stack spacing={2}>
-      {orders.map((order) => (
-        <Box
-          key={order.id}
-          sx={{
-            border: 1,
-            borderColor: "divider",
-            borderRadius: 1,
-            p: 2,
-          }}
-        >
-          <Stack
-            direction={{ xs: "column", sm: "row" }}
-            spacing={1}
-            sx={{ justifyContent: "space-between", alignItems: { sm: "flex-start" }, mb: 1.5 }}
-          >
-            <Box>
-              <Typography sx={{ fontWeight: 600 }}>
-                {order.reference || order.id.slice(0, 8).toUpperCase()}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {new Date(order.createdAt).toLocaleString()}
-              </Typography>
-            </Box>
-            <Typography sx={{ fontFamily: MONO, fontWeight: 600 }}>
-              {formatPrice(order.total)}
-            </Typography>
-          </Stack>
-
-          <Stack spacing={0.75}>
-            {order.items.map((item) => (
-              <Stack
-                key={item.id}
-                direction="row"
-                spacing={2}
-                sx={{ justifyContent: "space-between", gap: 2 }}
-              >
-                <Typography variant="body2" sx={{ minWidth: 0 }}>
-                  {item.quantity}× {item.name}
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ flexShrink: 0 }}>
-                  {formatPrice(item.lineTotal)}
-                </Typography>
-              </Stack>
-            ))}
-          </Stack>
-
-          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1.5 }}>
-            {order.brand && order.last4
-              ? `${order.brand} ···· ${order.last4} · `
-              : null}
-            {formatOrderStatus(order.status)}
-          </Typography>
-        </Box>
+      {successful.map((order) => (
+        <OrderSummaryCard key={order.id} order={order} />
       ))}
     </Stack>
   );
@@ -515,8 +579,19 @@ export default function Account() {
   const { itemCount } = useCart();
   const { preference, setPreference } = useColorMode();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const forceSetup = searchParams.get("setup") === "1" || user.needsName;
+
+  const sectionParam = searchParams.get("section");
+  const active =
+    NAV.some((item) => item.id === sectionParam) ? sectionParam : forceSetup ? "profile" : "profile";
+
+  function setSection(id) {
+    const next = new URLSearchParams(searchParams);
+    next.set("section", id);
+    if (id !== "profile") next.delete("setup");
+    setSearchParams(next, { replace: true });
+  }
 
   const displayName = user.name || "Your account";
   const initial = (user.name || user.email || "?").charAt(0).toUpperCase();
@@ -530,124 +605,158 @@ export default function Account() {
     : "Not recorded";
 
   return (
-    <Container maxWidth="md" sx={{ py: { xs: 3, md: 5 } }}>
+    <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 } }}>
       <Typography variant="h1" gutterBottom>
-        Account
+        Settings
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Profile and sign-in settings for ShopEZ.
+        Manage your ShopEZ profile, orders, and sign-in.
       </Typography>
 
-      <Stack spacing={3}>
-        <Section title="Profile">
-          <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
-            <Avatar
-              src={user.avatarUrl || undefined}
-              sx={{ width: 52, height: 52, bgcolor: "primary.main" }}
-            >
-              {initial}
-            </Avatar>
-            <Box sx={{ minWidth: 0 }}>
-              <Typography sx={{ fontWeight: 600, wordBreak: "break-word" }}>
-                {displayName}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" noWrap title={user.email}>
-                {user.email}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Joined {joined}
-              </Typography>
-            </Box>
-          </Stack>
-
-          <Divider sx={{ my: 2.5 }} />
-
-          <ProfileNameForm forceSetup={forceSetup} />
-
-          <Divider sx={{ my: 2.5 }} />
-
-          <Stack
-            direction="row"
-            spacing={2}
-            useFlexGap
-            sx={{ flexWrap: "wrap", justifyContent: "space-between" }}
-          >
-            <Box>
-              <Typography variant="body2" color="text.secondary">
-                Items in cart
-              </Typography>
-              <Typography variant="h4" sx={{ fontFamily: MONO }}>
-                {itemCount}
-              </Typography>
-            </Box>
-            <Button
-              variant="outlined"
-              onClick={async () => {
-                await logout();
-                setFlash("Signed out successfully.");
-                navigate("/");
-              }}
-            >
-              Sign out
-            </Button>
-          </Stack>
-        </Section>
-
-        <Section
-          title="Order history"
-          description="Orders placed with this ShopEZ account."
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: { xs: "1fr", md: "220px minmax(0, 1fr)" },
+          gap: { xs: 2, md: 4 },
+          alignItems: "start",
+        }}
+      >
+        <Paper
+          variant="outlined"
+          sx={{
+            p: 0.5,
+            position: { md: "sticky" },
+            top: 88,
+          }}
         >
-          <OrderHistory />
-        </Section>
-
-        <Section
-          title="Linked accounts"
-          description="Manage how you sign in to ShopEZ"
-        >
-          <LinkedAccounts />
-        </Section>
-
-        <Section
-          title="Appearance"
-          description="Follow the operating system, or pin the theme for this browser."
-        >
-          <ToggleButtonGroup
-            exclusive
-            size="small"
-            value={preference}
-            onChange={(_, value) => value && setPreference(value)}
-            aria-label="Theme preference"
-          >
-            <ToggleButton value="system">
-              <SettingsBrightnessOutlinedIcon fontSize="small" sx={{ mr: 1 }} />
-              System
-            </ToggleButton>
-            <ToggleButton value="light">
-              <LightModeOutlinedIcon fontSize="small" sx={{ mr: 1 }} />
-              Light
-            </ToggleButton>
-            <ToggleButton value="dark">
-              <DarkModeOutlinedIcon fontSize="small" sx={{ mr: 1 }} />
-              Dark
-            </ToggleButton>
-          </ToggleButtonGroup>
-        </Section>
-
-        {user.canChangePassword && (
-          <Section title="Password" description="Used to sign in with email on any device.">
-            <PasswordForm />
-          </Section>
-        )}
-
-        <Paper variant="outlined" sx={{ p: { xs: 2.5, md: 3 }, borderColor: "error.main" }}>
-          <Typography variant="h3" color="error.main">
-            Delete account
-          </Typography>
-          <Box sx={{ mt: 2 }}>
-            <DeleteAccount />
-          </Box>
+          <List dense disablePadding>
+            {NAV.map((item) => (
+              <ListItemButton
+                key={item.id}
+                selected={active === item.id}
+                onClick={() => setSection(item.id)}
+                sx={{
+                  borderRadius: 1,
+                  mb: 0.25,
+                  "&.Mui-selected": {
+                    bgcolor: "action.selected",
+                  },
+                }}
+              >
+                <ListItemText
+                  primary={item.label}
+                  primaryTypographyProps={{
+                    fontWeight: active === item.id ? 600 : 500,
+                    color: item.id === "danger" ? "error.main" : "inherit",
+                  }}
+                />
+              </ListItemButton>
+            ))}
+          </List>
         </Paper>
-      </Stack>
+
+        <Paper variant="outlined" sx={{ p: { xs: 2.5, md: 3.5 }, minHeight: 360 }}>
+          {active === "profile" && (
+            <Panel title="Profile" description="How you appear in ShopEZ.">
+              <Stack direction="row" spacing={2} sx={{ alignItems: "center", mb: 3 }}>
+                <Avatar
+                  src={user.avatarUrl || undefined}
+                  sx={{ width: 56, height: 56, bgcolor: "primary.main" }}
+                >
+                  {initial}
+                </Avatar>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography sx={{ fontWeight: 600, wordBreak: "break-word" }}>
+                    {displayName}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" noWrap title={user.email}>
+                    {user.email}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Joined {joined}
+                    {itemCount > 0 ? ` · ${itemCount} in cart` : ""}
+                  </Typography>
+                </Box>
+              </Stack>
+
+              <Divider sx={{ mb: 3 }} />
+              <ProfileNameForm forceSetup={forceSetup} />
+              <Divider sx={{ my: 3 }} />
+              <Button
+                variant="outlined"
+                onClick={async () => {
+                  await logout();
+                  setFlash("Signed out successfully.");
+                  navigate("/");
+                }}
+              >
+                Sign out
+              </Button>
+            </Panel>
+          )}
+
+          {active === "orders" && (
+            <Panel
+              title="Orders"
+              description="Completed checkouts for this account."
+            >
+              <OrdersPanel />
+            </Panel>
+          )}
+
+          {active === "security" && (
+            <Panel title="Security" description="Sign-in methods and password.">
+              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5 }}>
+                Linked accounts
+              </Typography>
+              <LinkedAccounts />
+              {user.canChangePassword && (
+                <>
+                  <Divider sx={{ my: 3 }} />
+                  <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5 }}>
+                    Password
+                  </Typography>
+                  <PasswordForm />
+                </>
+              )}
+            </Panel>
+          )}
+
+          {active === "appearance" && (
+            <Panel
+              title="Appearance"
+              description="Follow the system theme, or lock light/dark for this browser."
+            >
+              <ToggleButtonGroup
+                exclusive
+                size="small"
+                value={preference}
+                onChange={(_, value) => value && setPreference(value)}
+                aria-label="Theme preference"
+              >
+                <ToggleButton value="system">
+                  <SettingsBrightnessOutlinedIcon fontSize="small" sx={{ mr: 1 }} />
+                  System
+                </ToggleButton>
+                <ToggleButton value="light">
+                  <LightModeOutlinedIcon fontSize="small" sx={{ mr: 1 }} />
+                  Light
+                </ToggleButton>
+                <ToggleButton value="dark">
+                  <DarkModeOutlinedIcon fontSize="small" sx={{ mr: 1 }} />
+                  Dark
+                </ToggleButton>
+              </ToggleButtonGroup>
+            </Panel>
+          )}
+
+          {active === "danger" && (
+            <Panel title="Delete account" description="This action is permanent.">
+              <DeleteAccount />
+            </Panel>
+          )}
+        </Paper>
+      </Box>
     </Container>
   );
 }

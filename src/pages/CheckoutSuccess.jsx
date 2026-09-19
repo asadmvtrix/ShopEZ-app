@@ -134,7 +134,7 @@ export default function CheckoutSuccess() {
             <Stack spacing={1.5} direction={{ xs: "column", sm: "row" }}>
               <Button
                 component={RouterLink}
-                to="/account"
+                to="/account?section=orders"
                 variant="contained"
                 color="secondary"
                 size="large"
@@ -216,7 +216,7 @@ export default function CheckoutSuccess() {
             <Stack spacing={1.5}>
               <Button
                 component={RouterLink}
-                to="/account"
+                to="/account?section=orders"
                 variant="contained"
                 color="secondary"
                 size="large"
