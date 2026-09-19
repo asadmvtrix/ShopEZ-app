@@ -1,17 +1,17 @@
-const Stripe = require("stripe");
-const {
+import Stripe from "stripe";
+import {
   getAdminClient,
   requireUser,
   readJson,
   sendJson,
   siteOrigin,
-} = require("./_lib/http.cjs");
+} from "./_lib/http.js";
 
 function toCents(amount) {
   return Math.round(Number(amount) * 100);
 }
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== "POST") {
     sendJson(res, 405, { error: "Method not allowed." });
     return;
@@ -143,4 +143,4 @@ module.exports = async function handler(req, res) {
       error: error.message || "Could not start checkout.",
     });
   }
-};
+}

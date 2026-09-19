@@ -1,7 +1,13 @@
-const Stripe = require("stripe");
-const { getAdminClient, sendJson } = require("./_lib/http.cjs");
+import Stripe from "stripe";
+import { getAdminClient, sendJson } from "./_lib/http.js";
 
-module.exports = async function handler(req, res) {
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
+export default async function handler(req, res) {
   if (req.method !== "POST") {
     sendJson(res, 405, { error: "Method not allowed." });
     return;
@@ -66,10 +72,4 @@ module.exports = async function handler(req, res) {
   } catch (error) {
     sendJson(res, 400, { error: error.message || "Webhook error." });
   }
-};
-
-module.exports.config = {
-  api: {
-    bodyParser: false,
-  },
-};
+}
