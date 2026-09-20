@@ -13,6 +13,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -101,9 +102,7 @@ export default function Navbar() {
 
             <DropdownMenu>
               <DropdownMenuTrigger
-                render={
-                  <Button variant="ghost" className="gap-1" />
-                }
+                className={cn(buttonVariants({ variant: "ghost" }), "gap-1")}
               >
                 Categories
                 <ChevronDown data-icon="inline-end" className="size-4 opacity-70" />
@@ -153,11 +152,14 @@ export default function Navbar() {
           </RouterLink>
 
           {user ? (
-            <div className="ml-0.5 flex items-center gap-0.5">
-              <RouterLink
-                to="/account"
-                className={cn(buttonVariants({ variant: "ghost", size: "icon" }), iconBtn)}
-                aria-label="Account settings"
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                className={cn(
+                  buttonVariants({ variant: "ghost", size: "icon" }),
+                  iconBtn,
+                  "ml-0.5"
+                )}
+                aria-label="Account menu"
                 title={user.name || user.email}
               >
                 {user.avatarUrl ? (
@@ -171,39 +173,27 @@ export default function Navbar() {
                     {(user.name || user.email || "?").charAt(0).toUpperCase()}
                   </span>
                 )}
-              </RouterLink>
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-9 shrink-0"
-                      aria-label="Account menu"
-                    />
-                  }
-                >
-                  <ChevronDown className="size-4 opacity-70" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="min-w-56">
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-56">
+                <DropdownMenuGroup>
                   <DropdownMenuLabel className="font-normal">
                     <div className="text-sm font-semibold text-foreground">
                       {user.name || "Your account"}
                     </div>
                     <div className="text-xs text-muted-foreground">{user.email}</div>
                   </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => {
-                      navigate("/account");
-                    }}
-                  >
-                    Account settings
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleLogout}>Sign out</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => {
+                    navigate("/account");
+                  }}
+                >
+                  Account settings
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLogout}>Sign out</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           ) : (
             <>
               <RouterLink
