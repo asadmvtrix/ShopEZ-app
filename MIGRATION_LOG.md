@@ -177,3 +177,100 @@ Phase 0 did **not** commit (not required by the phase).
 
 ---
 
+## Phase 1 — Tooling (2026-09-20)
+
+### What Phase 1 required
+1. Resolve Vite override vs stable Vite 8 (+ peer deps for `@tailwindcss/vite` / `@vitejs/plugin-react`).
+2. Install Tailwind v4 (`tailwindcss` + `@tailwindcss/vite`); wire plugin in `vite.config.js`.
+3. Alias `@` → `./src` (Vite + `jsconfig.json`).
+4. Create `src/index.css` with cascade layer order + `@import "tailwindcss"`; import from `main.jsx`.
+5. MUI coexistence: `StyledEngineProvider enableCssLayer` + `GlobalStyles` layer-order string (per MUI Tailwind v4 docs).
+6. `npx shadcn@latest init` (Base UI, JavaScript, CSS `src/index.css`).
+7. Add: button, badge, card, input, label, separator, skeleton, sonner.
+8. Verify build; app UI still driven by MUI (no component migration yet).
+
+### Vite decision
+| Package | Checked | Result |
+|---|---|---|
+| `vite` latest | **8.3.0** (Rolldown built-in) | Adopted `vite: ^8.3.0` |
+| `@tailwindcss/vite` | peer `vite: ^5.2 \|\| ^6 \|\| ^7 \|\| ^8` | Compatible |
+| `@vitejs/plugin-react` | 5.1.x peer stopped at Vite 7; **6.1.1** peers Vite `^8` | Upgraded to `^6.1.1` |
+
+**Removed** `overrides.vite = npm:rolldown-vite@7.2.5`. Reinstall resolved real `vite@8.3.0`. Dev + production build both succeed.
+
+### Files changed (Phase 1 only)
+| Path | Change |
+|---|---|
+| `package.json` / `package-lock.json` | Vite 8, plugin-react 6, Tailwind, shadcn stack |
+| `vite.config.js` | `tailwindcss()` plugin + `@` alias |
+| `jsconfig.json` | **new** — `@/*` → `./src/*` |
+| `src/index.css` | **new** — layers + Tailwind + shadcn tokens |
+| `src/main.jsx` | import CSS; `StyledEngineProvider` + `GlobalStyles` |
+| `components.json` | **new** — Base UI Nova, `"tsx": false` |
+| `src/lib/utils.js` | **new** — `cn` re-export |
+| `src/components/ui/{button,badge,card,input,label,separator,skeleton,sonner}.jsx` | **new** |
+| `eslint.config.js` | ignore `react-refresh/only-export-components` under `src/components/ui/**` |
+| `MIGRATION_LOG.md` | this Phase 1 section |
+
+Pre-existing dirty WIP (pages/providers/components) was **not** committed or reverted.
+
+### shadcn init
+- Detected Vite + Tailwind v4 + `@` alias; JavaScript (`tsx: false`).
+- Base: **base** (Base UI); style **base-nova**; preset Nova (default prompt).
+- Installed (via CLI): `@base-ui/react`, `class-variance-authority`, `cn`, `lucide-react`, `shadcn`, `tw-animate-css`, `sonner`, `next-themes` (sonner peer).
+- `button` was created during init; remaining seven via `shadcn add … -y`.
+- Confirmed: `npx shadcn@latest info` → typescript No; installed components match Phase 1 list.
+
+### Deviations / decisions
+1. **Nova Geist font** — init added `@fontsource-variable/geist` and forced `html { font-sans }` / `body { bg-background text-foreground }`. Removed Geist import + body/html base applications so **IBM Plex + MUI CssBaseline** keep visual parity until Phase 2 token/font mapping. Uninstalled unused `@fontsource-variable/geist`.
+2. **Layer order preserved** — first line of `src/index.css` remains `@layer theme, base, mui, components, utilities;`.
+3. **`cn` package** — CLI uses `export { cn } from "cn"` (not local clsx/tailwind-merge). Allowed under global rule 4.
+4. **Dirty tree** — left as-is (Phase 0 note); Phase 1 tooling diffs sit on top of WIP.
+5. **Lint DoD** — full-repo lint still fails with the **same 31 baseline errors**. Phase 1 UI files lint clean after the eslint override. Not expanding into baseline lint cleanup.
+
+### Verification
+| Check | Result |
+|---|---|
+| `npm run build` | **PASS** — vite 8.3.0, 812 modules |
+| `npm run lint` | **FAIL** — 31 errors (unchanged vs Phase 0 baseline); Phase 1 files clean |
+| shadcn components | button, badge, card, input, label, separator, skeleton, sonner |
+| Visual | No UI components swapped yet; MUI still renders the store. Tailwind Preflight is active in `@layer base` (MUI styles in `@layer mui` should win for MUI nodes). Spot-check recommended. |
+
+#### Bundle sizes after Phase 1 (raw + gzip level 9)
+
+| Asset class | Raw | Gzip (level 9) | vs Phase 0 |
+|---|---:|---:|---|
+| All JS | 927.99 kB (950,265 B) | 282.13 kB (288,901 B) | ~−1.3 kB raw / ~+0.6 kB gzip |
+| All CSS | 40.28 kB (41,250 B) | 7.14 kB (7,310 B) | **+30.4 kB raw / +6.0 kB gzip** (Tailwind + shadcn CSS) |
+| **JS + CSS** | **968.27 kB** | **289.26 kB** | |
+
+CSS growth is expected (unused utility CSS until components migrate). JS nearly flat — shadcn components not imported by the app yet.
+
+### Manual test checklist (375px & 1280px, light & dark)
+- [ ] Home / Browse / Product details / Cart / Auth / Account still render as before (MUI)
+- [ ] Navbar drawer, menus, cart badge, theme toggle unchanged
+- [ ] No new console errors on happy paths
+- [ ] Optional: DevTools → Styles → confirm cascade layers order includes `mui` before `utilities`
+
+### Suggested commit message (when you choose to commit)
+
+```
+chore: add Tailwind v4 + shadcn Base UI tooling (Phase 1)
+
+Upgrade to Vite 8, wire CSS layers for MUI coexistence, and scaffold
+shadcn JS components without migrating pages yet.
+```
+
+Phase 1 did **not** commit.
+
+### Blockers / notes for Phase 2
+1. Map MUI palette → shadcn CSS variables; re-enable body/html token base styles carefully.
+2. Set `--font-sans` / `--font-mono` to IBM Plex (already loaded); do not reintroduce Geist unless decided.
+3. Bridge `ColorModeProvider` to toggle `.dark` on `<html>` (MUI mode + class must agree) + FOUC script in `index.html`.
+4. Convert `theme/motion.js` / `useWarmReveal` to CSS keyframes under `motion-safe`.
+5. Lint still red (31 baseline) — decide cleanup timing vs continuing slices.
+6. Dirty WIP still mixed with migration diffs — commit/stash strategy still open.
+7. `next-themes` was pulled in by sonner; unused until Toaster mount (Phase 3) — keep or drop then.
+
+---
+
