@@ -1,48 +1,35 @@
 import { useEffect, useState } from "react";
 import { Link as RouterLink, useSearchParams } from "react-router-dom";
-import Alert from "@mui/material/Alert";
-import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import CircularProgress from "@mui/material/CircularProgress";
-import Container from "@mui/material/Container";
-import Divider from "@mui/material/Divider";
-import Paper from "@mui/material/Paper";
-import Stack from "@mui/material/Stack";
-import Typography from "@mui/material/Typography";
+import { Loader2 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { buttonVariants } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 import CheckoutProgress from "../components/CheckoutProgress";
-import { useCart } from "../context/cart-context";
+import PageContainer from "../components/PageContainer";
+import { useCart } from "../context/CartProvider";
 import { fetchCheckoutSession } from "../services/stripe";
 import { formatPrice } from "../config/store";
-import { MONO } from "../theme";
 
 function SectionLabel({ children }) {
-  return (
-    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.25 }}>
-      {children}
-    </Typography>
-  );
+  return <p className="mb-3 text-sm font-medium text-muted-foreground">{children}</p>;
 }
 
 function DetailRow({ label, value, strong = false }) {
   return (
-    <Stack direction="row" spacing={2} sx={{ justifyContent: "space-between", gap: 2 }}>
-      <Typography
-        variant={strong ? "h5" : "body2"}
-        color={strong ? "text.primary" : "text.secondary"}
-      >
+    <div className="flex justify-between gap-4">
+      <span className={cn(strong ? "text-base font-semibold" : "text-sm text-muted-foreground")}>
         {label}
-      </Typography>
-      <Typography
-        variant={strong ? "h5" : "body2"}
-        sx={{
-          textAlign: "right",
-          wordBreak: "break-word",
-          fontFamily: strong ? MONO : "inherit",
-        }}
+      </span>
+      <span
+        className={cn(
+          "text-right break-words",
+          strong ? "font-mono text-base font-semibold" : "text-sm"
+        )}
       >
         {value}
-      </Typography>
-    </Stack>
+      </span>
+    </div>
   );
 }
 
@@ -97,57 +84,46 @@ export default function CheckoutSuccess() {
 
   if (state.loading) {
     return (
-      <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 } }}>
-        <Typography variant="h1" gutterBottom>
-          Confirmation
-        </Typography>
+      <PageContainer className="py-6 md:py-10">
+        <h1 className="mb-2 text-3xl font-semibold tracking-tight md:text-4xl">Confirmation</h1>
         <CheckoutProgress step={2} />
-        <Box sx={{ py: 6, textAlign: "center" }}>
-          <CircularProgress size={28} />
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-            Confirming your payment…
-          </Typography>
-        </Box>
-      </Container>
+        <div className="py-12 text-center">
+          <Loader2 className="mx-auto size-7 animate-spin text-muted-foreground" aria-hidden />
+          <p className="mt-4 text-sm text-muted-foreground">Confirming your payment…</p>
+        </div>
+      </PageContainer>
     );
   }
 
   if (state.error || !state.order) {
     return (
-      <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 } }}>
-        <Typography variant="h1" gutterBottom>
-          Confirmation
-        </Typography>
+      <PageContainer className="py-6 md:py-10">
+        <h1 className="mb-2 text-3xl font-semibold tracking-tight md:text-4xl">Confirmation</h1>
         <CheckoutProgress step={2} />
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: { xs: "1fr", md: "1fr 340px" },
-            gap: { xs: 3, md: 4 },
-            alignItems: "start",
-          }}
-        >
-          <Paper variant="outlined" sx={{ p: { xs: 2, sm: 2.5 } }}>
-            <Alert severity="error" sx={{ mb: 2.5 }}>
-              {state.error || "Couldn’t confirm this payment."}
+        <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-[1fr_340px] md:gap-8">
+          <div className="rounded-[var(--radius)] border border-border bg-card p-4 sm:p-5">
+            <Alert variant="destructive" className="mb-5">
+              <AlertDescription>
+                {state.error || "Couldn’t confirm this payment."}
+              </AlertDescription>
             </Alert>
-            <Stack spacing={1.5} direction={{ xs: "column", sm: "row" }}>
-              <Button
-                component={RouterLink}
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <RouterLink
                 to="/account?section=orders"
-                variant="contained"
-                color="secondary"
-                size="large"
+                className={cn(buttonVariants({ variant: "secondary", size: "lg" }), "inline-flex h-10")}
               >
                 Check order history
-              </Button>
-              <Button component={RouterLink} to="/checkout" variant="outlined" size="large">
+              </RouterLink>
+              <RouterLink
+                to="/checkout"
+                className={cn(buttonVariants({ variant: "outline", size: "lg" }), "inline-flex h-10")}
+              >
                 Back to checkout
-              </Button>
-            </Stack>
-          </Paper>
-        </Box>
-      </Container>
+              </RouterLink>
+            </div>
+          </div>
+        </div>
+      </PageContainer>
     );
   }
 
@@ -161,82 +137,69 @@ export default function CheckoutSuccess() {
     : "—";
 
   return (
-    <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 } }}>
-      <Typography variant="h1" gutterBottom>
+    <PageContainer className="py-6 md:py-10">
+      <h1 className="mb-2 text-3xl font-semibold tracking-tight md:text-4xl">
         {confirmed ? "Order confirmed" : "Payment received"}
-      </Typography>
+      </h1>
 
       <CheckoutProgress step={2} />
 
-      <Box
-        sx={{
-          display: "grid",
-          gridTemplateColumns: { xs: "1fr", md: "1fr 340px" },
-          gap: { xs: 3, md: 4 },
-          alignItems: "start",
-        }}
-      >
-        <Box>
+      <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-[1fr_340px] md:gap-8">
+        <div>
           <SectionLabel>Order details</SectionLabel>
-          <Paper variant="outlined" sx={{ p: { xs: 2, sm: 2.5 } }}>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
+          <div className="rounded-[var(--radius)] border border-border bg-card p-4 sm:p-5">
+            <p className="mb-5 text-sm text-muted-foreground">
               {confirmed
                 ? "Payment went through. Your order is saved in Account → Orders."
                 : "Stripe accepted the payment. Status may take a moment to update in your account."}
-            </Typography>
+            </p>
 
-            <Stack spacing={1.25}>
+            <div className="flex flex-col gap-3">
               <DetailRow label="Order" value={`#${shortOrderId(order.id)}`} />
               <DetailRow label="Paid with" value={formatPaidWith(order)} />
               <DetailRow label="Placed" value={placed} />
-            </Stack>
+            </div>
 
             {order.status === "pending" && (
-              <Alert severity="info" sx={{ mt: 2.5 }}>
-                Final order status may take a moment to update.
+              <Alert className="mt-5">
+                <AlertDescription>
+                  Final order status may take a moment to update.
+                </AlertDescription>
               </Alert>
             )}
-          </Paper>
-        </Box>
+          </div>
+        </div>
 
-        <Box
-          sx={{
-            position: { md: "sticky" },
-            top: 88,
-          }}
-        >
-          <Paper variant="outlined" sx={{ p: 3 }}>
-            <Typography variant="h3" gutterBottom>
-              Summary
-            </Typography>
-            <Box sx={{ my: 2 }}>
+        <div className="md:sticky md:top-[88px]">
+          <div className="rounded-[var(--radius)] border border-border bg-card p-6">
+            <h2 className="text-xl font-semibold tracking-tight sm:text-[1.375rem]">Summary</h2>
+            <div className="my-4">
               <DetailRow label="Total paid" value={formatPrice(order.amount)} strong />
-            </Box>
-            <Divider sx={{ mb: 2 }} />
-            <Stack spacing={1.5}>
-              <Button
-                component={RouterLink}
+            </div>
+            <Separator className="mb-4" />
+            <div className="flex flex-col gap-3">
+              <RouterLink
                 to="/account?section=orders"
-                variant="contained"
-                color="secondary"
-                size="large"
-                fullWidth
+                className={cn(
+                  buttonVariants({ variant: "secondary", size: "lg" }),
+                  "inline-flex h-10 w-full"
+                )}
               >
                 View order history
-              </Button>
-              <Button
-                component={RouterLink}
+              </RouterLink>
+              <RouterLink
                 to="/browse"
-                variant="outlined"
-                size="large"
-                fullWidth
+                className={cn(
+                  buttonVariants({ variant: "outline", size: "lg" }),
+                  "inline-flex h-10 w-full"
+                )}
               >
                 Continue shopping
-              </Button>
-            </Stack>
-          </Paper>
-        </Box>
-      </Box>
-    </Container>
+              </RouterLink>
+            </div>
+          </div>
+        </div>
+      </div>
+    </PageContainer>
   );
 }

@@ -1,38 +1,34 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import Alert from "@mui/material/Alert";
-import Avatar from "@mui/material/Avatar";
-import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import CircularProgress from "@mui/material/CircularProgress";
-import Container from "@mui/material/Container";
-import Dialog from "@mui/material/Dialog";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
-import DialogContentText from "@mui/material/DialogContentText";
-import DialogTitle from "@mui/material/DialogTitle";
-import Divider from "@mui/material/Divider";
-import List from "@mui/material/List";
-import ListItemButton from "@mui/material/ListItemButton";
-import ListItemText from "@mui/material/ListItemText";
-import Paper from "@mui/material/Paper";
-import Stack from "@mui/material/Stack";
-import TextField from "@mui/material/TextField";
-import ToggleButton from "@mui/material/ToggleButton";
-import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
-import Typography from "@mui/material/Typography";
-import DarkModeOutlinedIcon from "@mui/icons-material/DarkModeOutlined";
-import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
-import LightModeOutlinedIcon from "@mui/icons-material/LightModeOutlined";
-import SettingsBrightnessOutlinedIcon from "@mui/icons-material/SettingsBrightnessOutlined";
+import {
+  Loader2,
+  Mail,
+  Moon,
+  Sun,
+  Monitor,
+} from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 import GoogleGlyph from "../components/GoogleGlyph";
-import { useAuth } from "../context/auth-context";
-import { useCart } from "../context/cart-context";
-import { useColorMode } from "../context/color-mode-context";
+import PageContainer from "../components/PageContainer";
+import { useAuth } from "../context/AuthProvider";
+import { useCart } from "../context/CartProvider";
+import { useColorMode } from "../context/ColorModeProvider";
 import { setFlash } from "../lib/flash";
 import { formatOrderStatus, listOrders } from "../services/orders";
 import { formatPrice } from "../config/store";
-import { MONO } from "../theme";
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -44,6 +40,19 @@ const NAV = [
   { id: "danger", label: "Delete account" },
 ];
 
+function alertTone(severity) {
+  if (severity === "success") {
+    return "border-success/40 text-success *:data-[slot=alert-description]:text-success/90";
+  }
+  if (severity === "warning") {
+    return "border-warning/40 text-warning *:data-[slot=alert-description]:text-warning/90";
+  }
+  if (severity === "info") {
+    return "border-primary/30";
+  }
+  return undefined;
+}
+
 function shortOrderId(id) {
   if (!id) return "—";
   return String(id).replace(/-/g, "").slice(0, 8).toUpperCase();
@@ -51,18 +60,15 @@ function shortOrderId(id) {
 
 function Panel({ title, description, children }) {
   return (
-    <Box>
-      <Typography variant="h2" component="h2">
-        {title}
-      </Typography>
-      {description && (
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75, mb: 3 }}>
-          {description}
-        </Typography>
+    <div>
+      <h2 className="text-xl font-semibold tracking-tight sm:text-[1.375rem]">{title}</h2>
+      {description ? (
+        <p className="mt-1.5 mb-6 text-sm text-muted-foreground">{description}</p>
+      ) : (
+        <div className="mb-6" />
       )}
-      {!description && <Box sx={{ mb: 3 }} />}
       {children}
-    </Box>
+    </div>
   );
 }
 
@@ -86,34 +92,48 @@ function ProfileNameForm({ forceSetup }) {
   }
 
   return (
-    <Box component="form" onSubmit={onSubmit} noValidate>
-      <Stack spacing={2} sx={{ maxWidth: 420 }}>
+    <form onSubmit={onSubmit} noValidate>
+      <div className="flex max-w-md flex-col gap-4">
         {forceSetup && (
-          <Alert severity="info">Add your name so we can greet you instead of your email.</Alert>
+          <Alert className={alertTone("info")}>
+            <AlertDescription>
+              Add your name so we can greet you instead of your email.
+            </AlertDescription>
+          </Alert>
         )}
-        {status && <Alert severity={status.type}>{status.message}</Alert>}
-        <TextField
-          label="Your name"
-          autoComplete="name"
-          value={name}
-          onChange={(event) => {
-            setName(event.target.value);
-            setStatus(null);
-          }}
-          helperText="Shown in the app instead of your full email"
-        />
-        <Box>
-          <Button
-            type="submit"
-            variant="contained"
-            disabled={busy || name.trim().length < 2}
-            startIcon={busy ? <CircularProgress size={16} color="inherit" /> : null}
+        {status && (
+          <Alert
+            variant={status.type === "error" ? "destructive" : "default"}
+            className={status.type === "success" ? alertTone("success") : undefined}
           >
+            <AlertDescription>{status.message}</AlertDescription>
+          </Alert>
+        )}
+        <Field>
+          <FieldLabel htmlFor="profile-name">Your name</FieldLabel>
+          <Input
+            id="profile-name"
+            autoComplete="name"
+            value={name}
+            onChange={(event) => {
+              setName(event.target.value);
+              setStatus(null);
+            }}
+            aria-describedby="profile-name-desc"
+            className="h-10"
+          />
+          <FieldDescription id="profile-name-desc">
+            Shown in the app instead of your full email
+          </FieldDescription>
+        </Field>
+        <div>
+          <Button type="submit" disabled={busy || name.trim().length < 2}>
+            {busy && <Loader2 className="size-4 animate-spin" aria-hidden />}
             Save name
           </Button>
-        </Box>
-      </Stack>
-    </Box>
+        </div>
+      </div>
+    </form>
   );
 }
 
@@ -157,43 +177,61 @@ function PasswordForm() {
   }
 
   return (
-    <Box component="form" onSubmit={onSubmit} noValidate>
-      <Stack spacing={2} sx={{ maxWidth: 420 }}>
-        {status && <Alert severity={status.type}>{status.message}</Alert>}
-        <TextField
-          label="Current password"
-          type="password"
-          autoComplete="current-password"
-          value={fields.current}
-          onChange={set("current")}
-        />
-        <TextField
-          label="New password"
-          type="password"
-          autoComplete="new-password"
-          value={fields.next}
-          onChange={set("next")}
-          helperText={`At least ${MIN_PASSWORD_LENGTH} characters`}
-        />
-        <TextField
-          label="Confirm new password"
-          type="password"
-          autoComplete="new-password"
-          value={fields.confirm}
-          onChange={set("confirm")}
-        />
-        <Box>
-          <Button
-            type="submit"
-            variant="contained"
-            disabled={busy || !fields.current || !fields.next}
-            startIcon={busy ? <CircularProgress size={16} color="inherit" /> : null}
+    <form onSubmit={onSubmit} noValidate>
+      <div className="flex max-w-md flex-col gap-4">
+        {status && (
+          <Alert
+            variant={status.type === "error" ? "destructive" : "default"}
+            className={status.type === "success" ? alertTone("success") : undefined}
           >
+            <AlertDescription>{status.message}</AlertDescription>
+          </Alert>
+        )}
+        <Field>
+          <FieldLabel htmlFor="current-password">Current password</FieldLabel>
+          <Input
+            id="current-password"
+            type="password"
+            autoComplete="current-password"
+            value={fields.current}
+            onChange={set("current")}
+            className="h-10"
+          />
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="new-password">New password</FieldLabel>
+          <Input
+            id="new-password"
+            type="password"
+            autoComplete="new-password"
+            value={fields.next}
+            onChange={set("next")}
+            aria-describedby="new-password-desc"
+            className="h-10"
+          />
+          <FieldDescription id="new-password-desc">
+            At least {MIN_PASSWORD_LENGTH} characters
+          </FieldDescription>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="confirm-password">Confirm new password</FieldLabel>
+          <Input
+            id="confirm-password"
+            type="password"
+            autoComplete="new-password"
+            value={fields.confirm}
+            onChange={set("confirm")}
+            className="h-10"
+          />
+        </Field>
+        <div>
+          <Button type="submit" disabled={busy || !fields.current || !fields.next}>
+            {busy && <Loader2 className="size-4 animate-spin" aria-hidden />}
             Update password
           </Button>
-        </Box>
-      </Stack>
-    </Box>
+        </div>
+      </div>
+    </form>
   );
 }
 
@@ -213,7 +251,7 @@ function LinkedAccounts() {
       id: "google",
       title: "Google",
       subtitle: user.email,
-      icon: <GoogleGlyph sx={{ width: 18, height: 18 }} />,
+      icon: <GoogleGlyph className="size-[18px]" />,
     });
   }
   if (linkedEmail) {
@@ -221,7 +259,7 @@ function LinkedAccounts() {
       id: "email",
       title: "Email",
       subtitle: user.email,
-      icon: <EmailOutlinedIcon sx={{ fontSize: 20, color: "text.secondary" }} />,
+      icon: <Mail className="size-5 text-muted-foreground" aria-hidden />,
     });
   }
 
@@ -248,94 +286,78 @@ function LinkedAccounts() {
   }
 
   return (
-    <Stack spacing={2}>
-      {error && <Alert severity="error">{error}</Alert>}
-      {notice && <Alert severity="success">{notice}</Alert>}
+    <div className="flex flex-col gap-4">
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+      {notice && (
+        <Alert className={alertTone("success")}>
+          <AlertDescription>{notice}</AlertDescription>
+        </Alert>
+      )}
 
       {rows.length === 0 ? (
-        <Typography variant="body2" color="text.secondary">
-          No sign-in methods connected yet.
-        </Typography>
+        <p className="text-sm text-muted-foreground">No sign-in methods connected yet.</p>
       ) : (
-        <Paper variant="outlined" sx={{ overflow: "hidden" }}>
+        <div className="overflow-hidden rounded-[var(--radius)] border border-border bg-card">
           {rows.map((row, index) => (
-            <Box key={row.id}>
-              {index > 0 && <Divider />}
-              <Stack
-                direction="row"
-                spacing={1.5}
-                sx={{
-                  alignItems: "center",
-                  px: 2,
-                  py: 1.75,
-                  minHeight: 64,
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 1,
-                    display: "grid",
-                    placeItems: "center",
-                    flexShrink: 0,
-                    bgcolor: "action.hover",
-                  }}
-                >
+            <div key={row.id}>
+              {index > 0 && <Separator />}
+              <div className="flex min-h-16 items-center gap-3 px-4 py-3.5">
+                <div className="grid size-10 shrink-0 place-items-center rounded-[var(--radius)] bg-muted">
                   {row.icon}
-                </Box>
+                </div>
 
-                <Box sx={{ minWidth: 0, flex: 1 }}>
-                  <Typography sx={{ fontWeight: 600, lineHeight: 1.3 }}>{row.title}</Typography>
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    noWrap
-                    title={row.subtitle}
-                  >
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold leading-snug">{row.title}</p>
+                  <p className="truncate text-sm text-muted-foreground" title={row.subtitle}>
                     {row.subtitle}
-                  </Typography>
-                </Box>
+                  </p>
+                </div>
 
                 <Button
-                  size="small"
-                  color="inherit"
+                  size="sm"
+                  variant="ghost"
                   disabled={!canDisconnect || busy === row.id}
                   onClick={() => handleDisconnect(row.id)}
-                  sx={{ flexShrink: 0 }}
+                  className="shrink-0"
                 >
-                  {busy === row.id ? <CircularProgress size={16} /> : "Disconnect"}
+                  {busy === row.id ? (
+                    <Loader2 className="size-4 animate-spin" aria-hidden />
+                  ) : (
+                    "Disconnect"
+                  )}
                 </Button>
-              </Stack>
-            </Box>
+              </div>
+            </div>
           ))}
-        </Paper>
+        </div>
       )}
 
       {!canDisconnect && rows.length > 0 && (
-        <Typography variant="caption" color="text.secondary">
+        <p className="text-xs text-muted-foreground">
           Disconnect stays off while this is your only sign-in method.
-        </Typography>
+        </p>
       )}
 
       {!linkedGoogle && (
         <Button
-          variant="outlined"
+          variant="outline"
           onClick={handleConnectGoogle}
           disabled={busy === "link-google"}
-          startIcon={
-            busy === "link-google" ? (
-              <CircularProgress size={16} color="inherit" />
-            ) : (
-              <GoogleGlyph sx={{ width: 16, height: 16 }} />
-            )
-          }
-          sx={{ alignSelf: "flex-start" }}
+          className="self-start"
         >
+          {busy === "link-google" ? (
+            <Loader2 className="size-4 animate-spin" aria-hidden />
+          ) : (
+            <GoogleGlyph className="size-4" />
+          )}
           Connect Google
         </Button>
       )}
-    </Stack>
+    </div>
   );
 }
 
@@ -373,50 +395,65 @@ function DeleteAccount() {
 
   return (
     <>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+      <p className="mb-4 text-sm text-muted-foreground">
         Permanently removes this account and signs you out. Your cart on this device is cleared.
-      </Typography>
-      <Button color="error" variant="outlined" onClick={() => setOpen(true)}>
+      </p>
+      <Button variant="destructive" onClick={() => setOpen(true)}>
         Delete account
       </Button>
 
-      <Dialog open={open} onClose={busy ? undefined : close} maxWidth="xs" fullWidth>
-        <DialogTitle>Delete this account?</DialogTitle>
-        <DialogContent>
-          <DialogContentText sx={{ mb: 2 }}>
-            This cannot be undone. Type <strong>{CONFIRM_PHRASE}</strong> to confirm.
-          </DialogContentText>
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          if (!next && busy) return;
+          if (!next) close();
+          else setOpen(true);
+        }}
+      >
+        <DialogContent showCloseButton={!busy} className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete this account?</DialogTitle>
+            <DialogDescription>
+              This cannot be undone. Type <strong>{CONFIRM_PHRASE}</strong> to confirm.
+            </DialogDescription>
+          </DialogHeader>
+
           {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          <TextField
-            label="Confirmation"
-            placeholder={CONFIRM_PHRASE}
-            value={phrase}
-            onChange={(event) => {
-              setPhrase(event.target.value);
-              setError(null);
-            }}
-            autoFocus
-            autoComplete="off"
-          />
+
+          <Field>
+            <FieldLabel htmlFor="delete-confirm">Confirmation</FieldLabel>
+            <Input
+              id="delete-confirm"
+              placeholder={CONFIRM_PHRASE}
+              value={phrase}
+              onChange={(event) => {
+                setPhrase(event.target.value);
+                setError(null);
+              }}
+              autoFocus
+              autoComplete="off"
+              className="h-10"
+            />
+          </Field>
+
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={close} disabled={busy}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={busy || !phraseMatches}
+            >
+              {busy && <Loader2 className="size-4 animate-spin" aria-hidden />}
+              Delete account
+            </Button>
+          </DialogFooter>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={close} disabled={busy}>
-            Cancel
-          </Button>
-          <Button
-            color="error"
-            variant="contained"
-            onClick={confirmDelete}
-            disabled={busy || !phraseMatches}
-            startIcon={busy ? <CircularProgress size={16} color="inherit" /> : null}
-          >
-            Delete account
-          </Button>
-        </DialogActions>
       </Dialog>
     </>
   );
@@ -431,82 +468,45 @@ function OrderSummaryCard({ order }) {
       : null;
 
   return (
-    <Paper variant="outlined" sx={{ overflow: "hidden" }}>
-      <Box
-        sx={{
-          px: { xs: 2, sm: 2.5 },
-          py: 2,
-          display: "flex",
-          flexWrap: "wrap",
-          gap: 1.5,
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          bgcolor: "action.hover",
-          borderBottom: 1,
-          borderColor: "divider",
-        }}
-      >
-        <Box>
-          <Typography sx={{ fontWeight: 600 }}>Order #{shortOrderId(order.id)}</Typography>
-          <Typography variant="body2" color="text.secondary">
+    <div className="overflow-hidden rounded-[var(--radius)] border border-border bg-card">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border bg-muted px-4 py-4 sm:px-5">
+        <div>
+          <p className="font-semibold">Order #{shortOrderId(order.id)}</p>
+          <p className="text-sm text-muted-foreground">
             {new Date(order.createdAt).toLocaleString(undefined, {
               dateStyle: "medium",
               timeStyle: "short",
             })}
-          </Typography>
-        </Box>
-        <Stack spacing={0.25} sx={{ alignItems: { xs: "flex-start", sm: "flex-end" } }}>
-          <Typography sx={{ fontFamily: MONO, fontWeight: 600 }}>
-            {formatPrice(order.total)}
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
+          </p>
+        </div>
+        <div className="flex flex-col items-start gap-0.5 sm:items-end">
+          <p className="font-mono font-semibold">{formatPrice(order.total)}</p>
+          <p className="text-xs text-muted-foreground">
             {formatOrderStatus(order.status)}
             {paidWith ? ` · ${paidWith}` : ""}
-          </Typography>
-        </Stack>
-      </Box>
+          </p>
+        </div>
+      </div>
 
-      <Stack spacing={1} sx={{ px: { xs: 2, sm: 2.5 }, py: 2 }}>
+      <div className="flex flex-col gap-2 px-4 py-4 sm:px-5">
         {order.items.map((item) => (
-          <Stack
-            key={item.id}
-            direction="row"
-            spacing={2}
-            sx={{ justifyContent: "space-between", gap: 2 }}
-          >
-            <Typography variant="body2" color="text.secondary" sx={{ minWidth: 0 }}>
+          <div key={item.id} className="flex justify-between gap-4">
+            <p className="min-w-0 text-sm text-muted-foreground">
               {item.name}
-              <Box component="span" sx={{ color: "text.disabled" }}>
-                {" "}
-                ×{item.quantity}
-              </Box>
-            </Typography>
-            <Typography variant="body2" sx={{ flexShrink: 0, fontFamily: MONO }}>
-              {formatPrice(item.lineTotal)}
-            </Typography>
-          </Stack>
+              <span className="text-muted-foreground/60"> ×{item.quantity}</span>
+            </p>
+            <p className="shrink-0 font-mono text-sm">{formatPrice(item.lineTotal)}</p>
+          </div>
         ))}
-      </Stack>
+      </div>
 
-      <Divider />
+      <Separator />
 
-      <Stack
-        direction="row"
-        spacing={2}
-        sx={{
-          px: { xs: 2, sm: 2.5 },
-          py: 1.75,
-          justifyContent: "space-between",
-        }}
-      >
-        <Typography variant="body2" color="text.secondary">
-          Total
-        </Typography>
-        <Typography variant="h5" sx={{ fontFamily: MONO }}>
-          {formatPrice(order.total)}
-        </Typography>
-      </Stack>
-    </Paper>
+      <div className="flex justify-between gap-4 px-4 py-3.5 sm:px-5">
+        <p className="text-sm text-muted-foreground">Total</p>
+        <p className="font-mono text-base font-semibold">{formatPrice(order.total)}</p>
+      </div>
+    </div>
   );
 }
 
@@ -514,6 +514,21 @@ function OrdersPanel() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const loadOrders = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    return listOrders().then((result) => {
+      if (!result.success) {
+        setError(result.error);
+        setOrders([]);
+      } else {
+        setError(null);
+        setOrders(result.orders);
+      }
+      setLoading(false);
+    });
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -542,35 +557,42 @@ function OrdersPanel() {
 
   if (loading) {
     return (
-      <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", py: 2 }}>
-        <CircularProgress size={18} />
-        <Typography variant="body2" color="text.secondary">
-          Loading orders…
-        </Typography>
-      </Stack>
+      <div className="flex items-center gap-3 py-4">
+        <Loader2 className="size-4 animate-spin text-muted-foreground" aria-hidden />
+        <p className="text-sm text-muted-foreground">Loading orders…</p>
+      </div>
     );
   }
 
   if (error) {
-    return <Alert severity="error">{error}</Alert>;
+    return (
+      <Alert variant="destructive">
+        <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <span>{error}</span>
+          <Button variant="outline" size="sm" onClick={() => void loadOrders()}>
+            Try again
+          </Button>
+        </AlertDescription>
+      </Alert>
+    );
   }
 
   if (successful.length === 0) {
     return (
-      <Paper variant="outlined" sx={{ p: 3 }}>
-        <Typography variant="body2" color="text.secondary">
+      <div className="rounded-[var(--radius)] border border-border bg-card p-6">
+        <p className="text-sm text-muted-foreground">
           No completed orders yet. Paid checkouts will show up here as order summaries.
-        </Typography>
-      </Paper>
+        </p>
+      </div>
     );
   }
 
   return (
-    <Stack spacing={2}>
+    <div className="flex flex-col gap-4">
       {successful.map((order) => (
         <OrderSummaryCard key={order.id} order={order} />
       ))}
-    </Stack>
+    </div>
   );
 }
 
@@ -605,85 +627,78 @@ export default function Account() {
     : "Not recorded";
 
   return (
-    <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 } }}>
-      <Typography variant="h1" gutterBottom>
-        Settings
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+    <PageContainer className="py-6 md:py-10">
+      <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">Settings</h1>
+      <p className="mb-6 text-sm text-muted-foreground">
         Manage your ShopEZ profile, orders, and sign-in.
-      </Typography>
+      </p>
 
-      <Box
-        sx={{
-          display: "grid",
-          gridTemplateColumns: { xs: "1fr", md: "220px minmax(0, 1fr)" },
-          gap: { xs: 2, md: 4 },
-          alignItems: "start",
-        }}
-      >
-        <Paper
-          variant="outlined"
-          sx={{
-            p: 0.5,
-            position: { md: "sticky" },
-            top: 88,
-          }}
+      <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-[220px_minmax(0,1fr)] md:gap-8">
+        <nav
+          aria-label="Account sections"
+          className="rounded-[var(--radius)] border border-border bg-card p-1 md:sticky md:top-[88px]"
         >
-          <List dense disablePadding>
-            {NAV.map((item) => (
-              <ListItemButton
-                key={item.id}
-                selected={active === item.id}
-                onClick={() => setSection(item.id)}
-                sx={{
-                  borderRadius: 1,
-                  mb: 0.25,
-                  "&.Mui-selected": {
-                    bgcolor: "action.selected",
-                  },
-                }}
-              >
-                <ListItemText
-                  primary={item.label}
-                  primaryTypographyProps={{
-                    fontWeight: active === item.id ? 600 : 500,
-                    color: item.id === "danger" ? "error.main" : "inherit",
-                  }}
-                />
-              </ListItemButton>
-            ))}
-          </List>
-        </Paper>
+          <ul className="flex flex-col gap-0.5">
+            {NAV.map((item) => {
+              const selected = active === item.id;
+              return (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    onClick={() => setSection(item.id)}
+                    aria-current={selected ? "page" : undefined}
+                    className={cn(
+                      "flex w-full min-h-10 items-center rounded-[var(--radius)] px-3 py-2 text-left text-sm transition-colors",
+                      "focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring",
+                      selected
+                        ? "bg-muted font-semibold text-foreground"
+                        : "font-medium text-foreground hover:bg-muted/60",
+                      item.id === "danger" && "text-destructive"
+                    )}
+                  >
+                    {item.label}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
 
-        <Paper variant="outlined" sx={{ p: { xs: 2.5, md: 3.5 }, minHeight: 360 }}>
+        <div className="min-h-[360px] rounded-[var(--radius)] border border-border bg-card p-5 md:p-7">
           {active === "profile" && (
             <Panel title="Profile" description="How you appear in ShopEZ.">
-              <Stack direction="row" spacing={2} sx={{ alignItems: "center", mb: 3 }}>
-                <Avatar
-                  src={user.avatarUrl || undefined}
-                  sx={{ width: 56, height: 56, bgcolor: "primary.main" }}
-                >
-                  {initial}
-                </Avatar>
-                <Box sx={{ minWidth: 0 }}>
-                  <Typography sx={{ fontWeight: 600, wordBreak: "break-word" }}>
-                    {displayName}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" noWrap title={user.email}>
+              <div className="mb-6 flex items-center gap-4">
+                {user.avatarUrl ? (
+                  <img
+                    src={user.avatarUrl}
+                    alt=""
+                    className="size-14 rounded-full object-cover"
+                  />
+                ) : (
+                  <div
+                    className="grid size-14 place-items-center rounded-full bg-primary text-lg font-semibold text-primary-foreground"
+                    aria-hidden
+                  >
+                    {initial}
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <p className="font-semibold break-words">{displayName}</p>
+                  <p className="truncate text-sm text-muted-foreground" title={user.email}>
                     {user.email}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
+                  </p>
+                  <p className="text-xs text-muted-foreground">
                     Joined {joined}
                     {itemCount > 0 ? ` · ${itemCount} in cart` : ""}
-                  </Typography>
-                </Box>
-              </Stack>
+                  </p>
+                </div>
+              </div>
 
-              <Divider sx={{ mb: 3 }} />
+              <Separator className="mb-6" />
               <ProfileNameForm forceSetup={forceSetup} />
-              <Divider sx={{ my: 3 }} />
+              <Separator className="my-6" />
               <Button
-                variant="outlined"
+                variant="outline"
                 onClick={async () => {
                   await logout();
                   setFlash("Signed out successfully.");
@@ -696,26 +711,19 @@ export default function Account() {
           )}
 
           {active === "orders" && (
-            <Panel
-              title="Orders"
-              description="Completed checkouts for this account."
-            >
+            <Panel title="Orders" description="Completed checkouts for this account.">
               <OrdersPanel />
             </Panel>
           )}
 
           {active === "security" && (
             <Panel title="Security" description="Sign-in methods and password.">
-              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5 }}>
-                Linked accounts
-              </Typography>
+              <p className="mb-3 text-sm font-medium text-muted-foreground">Linked accounts</p>
               <LinkedAccounts />
               {user.canChangePassword && (
                 <>
-                  <Divider sx={{ my: 3 }} />
-                  <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5 }}>
-                    Password
-                  </Typography>
+                  <Separator className="my-6" />
+                  <p className="mb-3 text-sm font-medium text-muted-foreground">Password</p>
                   <PasswordForm />
                 </>
               )}
@@ -727,26 +735,34 @@ export default function Account() {
               title="Appearance"
               description="Follow the system theme, or lock light/dark for this browser."
             >
-              <ToggleButtonGroup
-                exclusive
-                size="small"
-                value={preference}
-                onChange={(_, value) => value && setPreference(value)}
+              <div
+                role="group"
                 aria-label="Theme preference"
+                className="inline-flex overflow-hidden rounded-[var(--radius)] border border-border"
               >
-                <ToggleButton value="system">
-                  <SettingsBrightnessOutlinedIcon fontSize="small" sx={{ mr: 1 }} />
-                  System
-                </ToggleButton>
-                <ToggleButton value="light">
-                  <LightModeOutlinedIcon fontSize="small" sx={{ mr: 1 }} />
-                  Light
-                </ToggleButton>
-                <ToggleButton value="dark">
-                  <DarkModeOutlinedIcon fontSize="small" sx={{ mr: 1 }} />
-                  Dark
-                </ToggleButton>
-              </ToggleButtonGroup>
+                {[
+                  { value: "system", label: "System", icon: <Monitor className="size-4" aria-hidden /> },
+                  { value: "light", label: "Light", icon: <Sun className="size-4" aria-hidden /> },
+                  { value: "dark", label: "Dark", icon: <Moon className="size-4" aria-hidden /> },
+                ].map(({ value, label, icon }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-pressed={preference === value}
+                    onClick={() => setPreference(value)}
+                    className={cn(
+                      "inline-flex min-h-10 items-center gap-2 px-3 text-sm font-medium transition-colors",
+                      "focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring",
+                      preference === value
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-card text-foreground hover:bg-muted"
+                    )}
+                  >
+                    {icon}
+                    {label}
+                  </button>
+                ))}
+              </div>
             </Panel>
           )}
 
@@ -755,8 +771,8 @@ export default function Account() {
               <DeleteAccount />
             </Panel>
           )}
-        </Paper>
-      </Box>
-    </Container>
+        </div>
+      </div>
+    </PageContainer>
   );
 }

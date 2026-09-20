@@ -1,28 +1,25 @@
 import { useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { Link as RouterLink, useNavigate, useSearchParams } from "react-router-dom";
-import Alert from "@mui/material/Alert";
-import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import CircularProgress from "@mui/material/CircularProgress";
-import Container from "@mui/material/Container";
-import IconButton from "@mui/material/IconButton";
-import InputAdornment from "@mui/material/InputAdornment";
-import Link from "@mui/material/Link";
-import Paper from "@mui/material/Paper";
-import Stack from "@mui/material/Stack";
-import Tab from "@mui/material/Tab";
-import Tabs from "@mui/material/Tabs";
-import TextField from "@mui/material/TextField";
-import Typography from "@mui/material/Typography";
-import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
-import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button, buttonVariants } from "@/components/ui/button";
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 import BrandMark from "../components/BrandMark";
 import GoogleGlyph from "../components/GoogleGlyph";
-import { useAuth } from "../context/auth-context";
+import { useAuth } from "../context/AuthProvider";
 import { markAppEnter } from "../hooks/useWarmReveal";
 import { setFlash } from "../lib/flash";
-import { clearGoogleOAuthAttempt, consumeGoogleOAuthAttempt } from "../lib/oauth";
+import { clearGoogleOAuthAttempt, consumeGoogleOAuthAttempt } from "../lib/supabase";
 import { supabase } from "../lib/supabase";
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -46,27 +43,33 @@ const newPasswordRules = {
   },
 };
 
+function alertTone(severity) {
+  if (severity === "success") {
+    return "border-success/40 text-success *:data-[slot=alert-description]:text-success/90";
+  }
+  if (severity === "warning") {
+    return "border-warning/40 text-warning *:data-[slot=alert-description]:text-warning/90";
+  }
+  return undefined;
+}
+
 function usePasswordVisibility() {
   const [visible, setVisible] = useState(false);
 
-  const adornment = (
-    <InputAdornment position="end">
-      <IconButton
-        size="small"
-        edge="end"
-        onClick={() => setVisible((current) => !current)}
-        aria-label={visible ? "Hide password" : "Show password"}
-      >
-        {visible ? (
-          <VisibilityOffOutlinedIcon fontSize="small" />
-        ) : (
-          <VisibilityOutlinedIcon fontSize="small" />
-        )}
-      </IconButton>
-    </InputAdornment>
+  const toggle = (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon-sm"
+      className="absolute top-1/2 right-1 size-8 -translate-y-1/2"
+      onClick={() => setVisible((current) => !current)}
+      aria-label={visible ? "Hide password" : "Show password"}
+    >
+      {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+    </Button>
   );
 
-  return { type: visible ? "text" : "password", adornment };
+  return { type: visible ? "text" : "password", toggle };
 }
 
 function goIntoApp(navigate, redirectTo, { needsName = false, flash } = {}) {
@@ -159,61 +162,68 @@ function CredentialsForm({ isSignUp, redirectTo, verifiedNotice, onNeedsConfirma
   }
 
   return (
-    <Box component="form" onSubmit={handleSubmit(onSubmit)} noValidate sx={{ p: 3 }}>
+    <form onSubmit={handleSubmit(onSubmit)} noValidate className="p-6">
       {verifiedNotice && (
-        <Alert severity="success" sx={{ mb: 2.5 }}>
-          Email verified. Sign in to continue.
+        <Alert className={cn("mb-5", alertTone("success"))}>
+          <AlertDescription>Email verified. Sign in to continue.</AlertDescription>
         </Alert>
       )}
       {formError && (
-        <Alert severity="warning" sx={{ mb: 2.5 }}>
-          {formError}
+        <Alert className={cn("mb-5", alertTone("warning"))}>
+          <AlertDescription>{formError}</AlertDescription>
         </Alert>
       )}
 
-      <Stack spacing={2}>
+      <FieldGroup className="gap-4">
         <Button
           type="button"
-          variant="outlined"
-          size="large"
-          fullWidth
+          variant="outline"
+          size="lg"
+          className="h-10 w-full bg-card"
           onClick={onGoogle}
           disabled={googleBusy || isSubmitting}
-          startIcon={googleBusy ? <CircularProgress size={18} color="inherit" /> : <GoogleGlyph />}
-          sx={{ bgcolor: "background.paper" }}
         >
+          {googleBusy ? (
+            <Loader2 className="size-4 animate-spin" aria-hidden />
+          ) : (
+            <GoogleGlyph />
+          )}
           Continue with Google
         </Button>
 
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: "1fr auto 1fr",
-            alignItems: "center",
-            gap: 1.5,
-          }}
-        >
-          <Box sx={{ borderBottom: 1, borderColor: "divider" }} />
-          <Typography variant="caption" color="text.secondary">
-            or
-          </Typography>
-          <Box sx={{ borderBottom: 1, borderColor: "divider" }} />
-        </Box>
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+          <div className="border-b border-border" />
+          <span className="text-xs text-muted-foreground">or</span>
+          <div className="border-b border-border" />
+        </div>
 
         {isSignUp && (
           <Controller
             name="fullName"
             control={control}
             rules={nameRules}
-            render={({ field, fieldState }) => (
-              <TextField
-                {...field}
-                label="Your name"
-                autoComplete="name"
-                error={Boolean(fieldState.error)}
-                helperText={fieldState.error?.message ?? "Shown on your account"}
-              />
-            )}
+            render={({ field, fieldState }) => {
+              const descId = "fullName-desc";
+              const errorId = "fullName-error";
+              return (
+                <Field data-invalid={fieldState.invalid || undefined}>
+                  <FieldLabel htmlFor={field.name}>Your name</FieldLabel>
+                  <Input
+                    {...field}
+                    id={field.name}
+                    autoComplete="name"
+                    aria-invalid={fieldState.invalid}
+                    aria-describedby={fieldState.invalid ? errorId : descId}
+                    className="h-10"
+                  />
+                  {fieldState.invalid ? (
+                    <FieldError id={errorId} errors={[fieldState.error]} />
+                  ) : (
+                    <FieldDescription id={descId}>Shown on your account</FieldDescription>
+                  )}
+                </Field>
+              );
+            }}
           />
         )}
 
@@ -221,36 +231,58 @@ function CredentialsForm({ isSignUp, redirectTo, verifiedNotice, onNeedsConfirma
           name="email"
           control={control}
           rules={emailRules}
-          render={({ field, fieldState }) => (
-            <TextField
-              {...field}
-              label="Email"
-              type="email"
-              autoComplete="email"
-              error={Boolean(fieldState.error)}
-              helperText={fieldState.error?.message ?? " "}
-            />
-          )}
+          render={({ field, fieldState }) => {
+            const errorId = "email-error";
+            return (
+              <Field data-invalid={fieldState.invalid || undefined}>
+                <FieldLabel htmlFor={field.name}>Email</FieldLabel>
+                <Input
+                  {...field}
+                  id={field.name}
+                  type="email"
+                  autoComplete="email"
+                  aria-invalid={fieldState.invalid}
+                  aria-describedby={fieldState.invalid ? errorId : undefined}
+                  className="h-10"
+                />
+                {fieldState.invalid && <FieldError id={errorId} errors={[fieldState.error]} />}
+              </Field>
+            );
+          }}
         />
 
         <Controller
           name="password"
           control={control}
           rules={isSignUp ? newPasswordRules : { required: "Enter your password." }}
-          render={({ field, fieldState }) => (
-            <TextField
-              {...field}
-              label="Password"
-              type={password.type}
-              autoComplete={isSignUp ? "new-password" : "current-password"}
-              error={Boolean(fieldState.error)}
-              helperText={
-                fieldState.error?.message ??
-                (isSignUp ? `At least ${MIN_PASSWORD_LENGTH} characters` : " ")
-              }
-              slotProps={{ input: { endAdornment: password.adornment } }}
-            />
-          )}
+          render={({ field, fieldState }) => {
+            const descId = "password-desc";
+            const errorId = "password-error";
+            return (
+              <Field data-invalid={fieldState.invalid || undefined}>
+                <FieldLabel htmlFor={field.name}>Password</FieldLabel>
+                <div className="relative">
+                  <Input
+                    {...field}
+                    id={field.name}
+                    type={password.type}
+                    autoComplete={isSignUp ? "new-password" : "current-password"}
+                    aria-invalid={fieldState.invalid}
+                    aria-describedby={fieldState.invalid ? errorId : isSignUp ? descId : undefined}
+                    className="h-10 pr-10"
+                  />
+                  {password.toggle}
+                </div>
+                {fieldState.invalid ? (
+                  <FieldError id={errorId} errors={[fieldState.error]} />
+                ) : isSignUp ? (
+                  <FieldDescription id={descId}>
+                    At least {MIN_PASSWORD_LENGTH} characters
+                  </FieldDescription>
+                ) : null}
+              </Field>
+            );
+          }}
         />
 
         {isSignUp && (
@@ -261,42 +293,44 @@ function CredentialsForm({ isSignUp, redirectTo, verifiedNotice, onNeedsConfirma
               validate: (value) =>
                 value === getValues("password") || "The two passwords do not match.",
             }}
-            render={({ field, fieldState }) => (
-              <TextField
-                {...field}
-                label="Confirm password"
-                type={password.type}
-                autoComplete="new-password"
-                error={Boolean(fieldState.error)}
-                helperText={fieldState.error?.message ?? " "}
-              />
-            )}
+            render={({ field, fieldState }) => {
+              const errorId = "confirmPassword-error";
+              return (
+                <Field data-invalid={fieldState.invalid || undefined}>
+                  <FieldLabel htmlFor={field.name}>Confirm password</FieldLabel>
+                  <Input
+                    {...field}
+                    id={field.name}
+                    type={password.type}
+                    autoComplete="new-password"
+                    aria-invalid={fieldState.invalid}
+                    aria-describedby={fieldState.invalid ? errorId : undefined}
+                    className="h-10"
+                  />
+                  {fieldState.invalid && <FieldError id={errorId} errors={[fieldState.error]} />}
+                </Field>
+              );
+            }}
           />
         )}
 
-        <Button
-          type="submit"
-          variant="contained"
-          size="large"
-          disabled={isSubmitting || googleBusy}
-          startIcon={isSubmitting ? <CircularProgress size={18} color="inherit" /> : null}
-        >
+        <Button type="submit" size="lg" className="h-10 w-full" disabled={isSubmitting || googleBusy}>
+          {isSubmitting && <Loader2 className="size-4 animate-spin" aria-hidden />}
           {isSignUp ? "Create account" : "Sign in"}
         </Button>
 
         {!isSignUp && (
-          <Box sx={{ textAlign: "center" }}>
-            <Link
-              component={RouterLink}
+          <p className="text-center text-sm">
+            <RouterLink
               to={`/auth?mode=reset${redirectTo ? `&redirect=${redirectTo}` : ""}`}
-              variant="body2"
+              className="text-primary underline-offset-4 hover:underline"
             >
               Forgot your password?
-            </Link>
-          </Box>
+            </RouterLink>
+          </p>
         )}
-      </Stack>
-    </Box>
+      </FieldGroup>
+    </form>
   );
 }
 
@@ -326,68 +360,68 @@ function ResetRequestForm({ redirectTo }) {
 
   if (sent) {
     return (
-      <Box sx={{ p: 3 }}>
-        <Alert severity="success" sx={{ mb: 2 }}>
-          Check your email for a reset link.
+      <div className="p-6">
+        <Alert className={cn("mb-4", alertTone("success"))}>
+          <AlertDescription>Check your email for a reset link.</AlertDescription>
         </Alert>
-        <Button
-          component={RouterLink}
+        <RouterLink
           to={`/auth?mode=login${redirectTo ? `&redirect=${redirectTo}` : ""}`}
-          variant="contained"
-          fullWidth
+          className={cn(buttonVariants({ size: "lg" }), "inline-flex h-10 w-full")}
         >
           Back to sign in
-        </Button>
-      </Box>
+        </RouterLink>
+      </div>
     );
   }
 
   return (
-    <Box component="form" onSubmit={handleSubmit(onSubmit)} noValidate sx={{ p: 3 }}>
+    <form onSubmit={handleSubmit(onSubmit)} noValidate className="p-6">
       {formError && (
-        <Alert severity="error" sx={{ mb: 2.5 }}>
-          {formError}
+        <Alert variant="destructive" className="mb-5">
+          <AlertDescription>{formError}</AlertDescription>
         </Alert>
       )}
 
-      <Stack spacing={2}>
+      <FieldGroup className="gap-4">
         <Controller
           name="email"
           control={control}
           rules={emailRules}
-          render={({ field, fieldState }) => (
-            <TextField
-              {...field}
-              label="Email"
-              type="email"
-              autoComplete="email"
-              error={Boolean(fieldState.error)}
-              helperText={fieldState.error?.message ?? " "}
-            />
-          )}
+          render={({ field, fieldState }) => {
+            const errorId = "reset-email-error";
+            return (
+              <Field data-invalid={fieldState.invalid || undefined}>
+                <FieldLabel htmlFor={field.name}>Email</FieldLabel>
+                <Input
+                  {...field}
+                  id={field.name}
+                  type="email"
+                  autoComplete="email"
+                  aria-invalid={fieldState.invalid}
+                  aria-describedby={fieldState.invalid ? errorId : undefined}
+                  className="h-10"
+                />
+                {fieldState.invalid && <FieldError id={errorId} errors={[fieldState.error]} />}
+              </Field>
+            );
+          }}
         />
 
-        <Button
-          type="submit"
-          variant="contained"
-          size="large"
-          disabled={isSubmitting}
-          startIcon={isSubmitting ? <CircularProgress size={18} color="inherit" /> : null}
-        >
+        <Button type="submit" size="lg" className="h-10 w-full" disabled={isSubmitting}>
+          {isSubmitting && <Loader2 className="size-4 animate-spin" aria-hidden />}
           Send reset link
         </Button>
 
-        <Box sx={{ textAlign: "center" }}>
-          <Link
-            component={RouterLink}
+        <p className="text-center text-sm">
+          <RouterLink
             to={`/auth?mode=login${redirectTo ? `&redirect=${redirectTo}` : ""}`}
-            variant="body2"
+            className="text-primary underline-offset-4 hover:underline"
           >
             Back to sign in
-          </Link>
-        </Box>
-      </Stack>
-    </Box>
+          </RouterLink>
+        </p>
+      </FieldGroup>
+    </form>
   );
 }
 
@@ -421,41 +455,61 @@ function UpdatePasswordForm({ redirectTo }) {
 
   if (!user) {
     return (
-      <Box sx={{ p: 3 }}>
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          Open the reset link from your email first.
+      <div className="p-6">
+        <Alert className={cn("mb-4", alertTone("warning"))}>
+          <AlertDescription>Open the reset link from your email first.</AlertDescription>
         </Alert>
-        <Button component={RouterLink} to="/auth?mode=reset" variant="outlined" fullWidth>
+        <RouterLink
+          to="/auth?mode=reset"
+          className={cn(buttonVariants({ variant: "outline", size: "lg" }), "inline-flex h-10 w-full")}
+        >
           Request a new link
-        </Button>
-      </Box>
+        </RouterLink>
+      </div>
     );
   }
 
   return (
-    <Box component="form" onSubmit={handleSubmit(onSubmit)} noValidate sx={{ p: 3 }}>
+    <form onSubmit={handleSubmit(onSubmit)} noValidate className="p-6">
       {formError && (
-        <Alert severity="error" sx={{ mb: 2.5 }}>
-          {formError}
+        <Alert variant="destructive" className="mb-5">
+          <AlertDescription>{formError}</AlertDescription>
         </Alert>
       )}
 
-      <Stack spacing={2}>
+      <FieldGroup className="gap-4">
         <Controller
           name="password"
           control={control}
           rules={newPasswordRules}
-          render={({ field, fieldState }) => (
-            <TextField
-              {...field}
-              label="New password"
-              type={password.type}
-              autoComplete="new-password"
-              error={Boolean(fieldState.error)}
-              helperText={fieldState.error?.message ?? `At least ${MIN_PASSWORD_LENGTH} characters`}
-              slotProps={{ input: { endAdornment: password.adornment } }}
-            />
-          )}
+          render={({ field, fieldState }) => {
+            const descId = "new-password-desc";
+            const errorId = "new-password-error";
+            return (
+              <Field data-invalid={fieldState.invalid || undefined}>
+                <FieldLabel htmlFor={field.name}>New password</FieldLabel>
+                <div className="relative">
+                  <Input
+                    {...field}
+                    id={field.name}
+                    type={password.type}
+                    autoComplete="new-password"
+                    aria-invalid={fieldState.invalid}
+                    aria-describedby={fieldState.invalid ? errorId : descId}
+                    className="h-10 pr-10"
+                  />
+                  {password.toggle}
+                </div>
+                {fieldState.invalid ? (
+                  <FieldError id={errorId} errors={[fieldState.error]} />
+                ) : (
+                  <FieldDescription id={descId}>
+                    At least {MIN_PASSWORD_LENGTH} characters
+                  </FieldDescription>
+                )}
+              </Field>
+            );
+          }}
         />
 
         <Controller
@@ -465,29 +519,32 @@ function UpdatePasswordForm({ redirectTo }) {
             validate: (value) =>
               value === getValues("password") || "The two passwords do not match.",
           }}
-          render={({ field, fieldState }) => (
-            <TextField
-              {...field}
-              label="Confirm new password"
-              type={password.type}
-              autoComplete="new-password"
-              error={Boolean(fieldState.error)}
-              helperText={fieldState.error?.message ?? " "}
-            />
-          )}
+          render={({ field, fieldState }) => {
+            const errorId = "confirm-new-password-error";
+            return (
+              <Field data-invalid={fieldState.invalid || undefined}>
+                <FieldLabel htmlFor={field.name}>Confirm new password</FieldLabel>
+                <Input
+                  {...field}
+                  id={field.name}
+                  type={password.type}
+                  autoComplete="new-password"
+                  aria-invalid={fieldState.invalid}
+                  aria-describedby={fieldState.invalid ? errorId : undefined}
+                  className="h-10"
+                />
+                {fieldState.invalid && <FieldError id={errorId} errors={[fieldState.error]} />}
+              </Field>
+            );
+          }}
         />
 
-        <Button
-          type="submit"
-          variant="contained"
-          size="large"
-          disabled={isSubmitting}
-          startIcon={isSubmitting ? <CircularProgress size={18} color="inherit" /> : null}
-        >
+        <Button type="submit" size="lg" className="h-10 w-full" disabled={isSubmitting}>
+          {isSubmitting && <Loader2 className="size-4 animate-spin" aria-hidden />}
           Save new password
         </Button>
-      </Stack>
-    </Box>
+      </FieldGroup>
+    </form>
   );
 }
 
@@ -496,6 +553,15 @@ function readAuthLinkType() {
     ? window.location.hash.slice(1)
     : window.location.hash;
   return new URLSearchParams(hash).get("type");
+}
+
+function AuthBrand() {
+  return (
+    <div className="mb-6 flex items-center justify-center gap-2 text-primary">
+      <BrandMark className="size-9" />
+      <span className="text-2xl font-semibold tracking-[-0.02em] sm:text-[1.75rem]">ShopEZ</span>
+    </div>
+  );
 }
 
 export default function Auth() {
@@ -562,33 +628,21 @@ export default function Auth() {
     navigate(`/auth?${params}`, { replace: true });
   }
 
-  const brand = (
-    <Stack
-      direction="row"
-      spacing={1}
-      sx={{ alignItems: "center", justifyContent: "center", mb: 3, color: "primary.main" }}
-    >
-      <BrandMark sx={{ fontSize: 36 }} />
-      <Typography variant="h3" component="span" sx={{ letterSpacing: "-0.02em" }}>
-        ShopEZ
-      </Typography>
-    </Stack>
-  );
+  const shell = "mx-auto w-full max-w-md px-4 py-10 sm:px-6 md:py-16";
 
   if (pendingEmail) {
     return (
-      <Container maxWidth="xs" sx={{ py: { xs: 5, md: 8 } }}>
-        {brand}
-        <Paper variant="outlined" sx={{ p: 3 }}>
-          <Typography variant="h3" gutterBottom>
+      <div className={shell}>
+        <AuthBrand />
+        <div className="rounded-[var(--radius)] border border-border bg-card p-6">
+          <h1 className="text-xl font-semibold tracking-tight sm:text-[1.375rem]">
             Check your email
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
-            We sent a link to <strong>{pendingEmail}</strong>.
-          </Typography>
+          </h1>
+          <p className="mt-2 mb-5 text-sm text-muted-foreground">
+            We sent a link to <strong className="text-foreground">{pendingEmail}</strong>.
+          </p>
           <Button
-            variant="contained"
-            fullWidth
+            className="h-10 w-full"
             onClick={() => {
               setPendingEmail(null);
               switchMode("login");
@@ -596,23 +650,22 @@ export default function Auth() {
           >
             Back to sign in
           </Button>
-        </Paper>
-      </Container>
+        </div>
+      </div>
     );
   }
 
   if (!loading && user && verifiedNotice && mode !== "update-password") {
     return (
-      <Container maxWidth="xs" sx={{ py: { xs: 5, md: 8 } }}>
-        {brand}
-        <Paper variant="outlined" sx={{ p: 3 }}>
-          <Alert severity="success" sx={{ mb: 2.5 }}>
-            You&apos;re verified. Welcome to ShopEZ.
+      <div className={shell}>
+        <AuthBrand />
+        <div className="rounded-[var(--radius)] border border-border bg-card p-6">
+          <Alert className={cn("mb-5", alertTone("success"))}>
+            <AlertDescription>You&apos;re verified. Welcome to ShopEZ.</AlertDescription>
           </Alert>
           <Button
-            variant="contained"
-            size="large"
-            fullWidth
+            size="lg"
+            className="h-10 w-full"
             onClick={() =>
               goIntoApp(navigate, redirectTo, {
                 needsName: user.needsName,
@@ -622,73 +675,85 @@ export default function Auth() {
           >
             Continue shopping
           </Button>
-        </Paper>
-      </Container>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Container maxWidth="xs" sx={{ py: { xs: 5, md: 8 } }}>
-      {brand}
+    <div className={shell}>
+      <AuthBrand />
 
       {!configured && (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          Add your Supabase keys to <code>.env</code>, then restart the dev server.
+        <Alert className={cn("mb-4", alertTone("warning"))}>
+          <AlertDescription>
+            Add your Supabase keys to <code className="font-mono">.env</code>, then restart the
+            dev server.
+          </AlertDescription>
         </Alert>
       )}
 
       {!loading && fromOAuth && !user && oauthTimedOut ? (
-        <Paper variant="outlined" sx={{ p: 3 }}>
-          <Alert severity="warning" sx={{ mb: 2 }}>
-            Google sign-in did not finish. Check the SETUP-AUTH.md steps, then try again.
+        <div className="rounded-[var(--radius)] border border-border bg-card p-6">
+          <Alert className={cn("mb-4", alertTone("warning"))}>
+            <AlertDescription>
+              Google sign-in did not finish. Check the SETUP-AUTH.md steps, then try again.
+            </AlertDescription>
           </Alert>
           <Button
-            variant="contained"
-            fullWidth
+            className="h-10 w-full"
             onClick={() => navigate("/auth?mode=login", { replace: true })}
           >
             Back to sign in
           </Button>
-        </Paper>
+        </div>
       ) : !loading && user && fromOAuth ? (
-        <Paper variant="outlined" sx={{ p: 4, textAlign: "center" }}>
-          <CircularProgress aria-label="Signing you in" />
-        </Paper>
+        <div className="rounded-[var(--radius)] border border-border bg-card p-8 text-center">
+          <Loader2 className="mx-auto size-8 animate-spin text-muted-foreground" aria-label="Signing you in" />
+        </div>
       ) : (
-      <Paper variant="outlined" sx={{ overflow: "hidden" }}>
-        {mode === "reset" || mode === "update-password" ? (
-          <Box sx={{ px: 3, pt: 3 }}>
-            <Typography variant="h3">
-              {mode === "update-password" ? "New password" : "Reset password"}
-            </Typography>
-          </Box>
-        ) : (
-          <Tabs
-            value={mode}
-            onChange={(_, value) => switchMode(value)}
-            variant="fullWidth"
-            sx={{ borderBottom: 1, borderColor: "divider" }}
-          >
-            <Tab label="Create account" value="signup" />
-            <Tab label="Sign in" value="login" />
-          </Tabs>
-        )}
+        <div className="overflow-hidden rounded-[var(--radius)] border border-border bg-card">
+          {mode === "reset" || mode === "update-password" ? (
+            <div className="px-6 pt-6">
+              <h1 className="text-xl font-semibold tracking-tight sm:text-[1.375rem]">
+                {mode === "update-password" ? "New password" : "Reset password"}
+              </h1>
+            </div>
+          ) : (
+            <Tabs
+              value={mode}
+              onValueChange={(value) => switchMode(value)}
+              className="w-full gap-0"
+            >
+              <TabsList
+                variant="line"
+                className="h-auto w-full rounded-none border-b border-border p-0"
+              >
+                <TabsTrigger value="signup" className="flex-1 rounded-none py-3">
+                  Create account
+                </TabsTrigger>
+                <TabsTrigger value="login" className="flex-1 rounded-none py-3">
+                  Sign in
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          )}
 
-        {mode === "reset" ? (
-          <ResetRequestForm key="reset" redirectTo={redirectTo} />
-        ) : mode === "update-password" ? (
-          <UpdatePasswordForm key="update" redirectTo={redirectTo} />
-        ) : (
-          <CredentialsForm
-            key={mode}
-            isSignUp={mode === "signup"}
-            redirectTo={redirectTo}
-            verifiedNotice={verifiedNotice && mode === "login"}
-            onNeedsConfirmation={setPendingEmail}
-          />
-        )}
-      </Paper>
+          {mode === "reset" ? (
+            <ResetRequestForm key="reset" redirectTo={redirectTo} />
+          ) : mode === "update-password" ? (
+            <UpdatePasswordForm key="update" redirectTo={redirectTo} />
+          ) : (
+            <CredentialsForm
+              key={mode}
+              isSignUp={mode === "signup"}
+              redirectTo={redirectTo}
+              verifiedNotice={verifiedNotice && mode === "login"}
+              onNeedsConfirmation={setPendingEmail}
+            />
+          )}
+        </div>
       )}
-    </Container>
+    </div>
   );
 }

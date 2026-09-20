@@ -1,5 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { CatalogContext } from "./catalog-context";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+
+const CatalogContext = createContext(null);
+
+export function useCatalog() {
+  const context = useContext(CatalogContext);
+  if (!context) {
+    throw new Error("useCatalog must be used within a CatalogProvider");
+  }
+  return context;
+}
 import { fetchCatalog } from "../services/catalog";
 import {
   getBrand,

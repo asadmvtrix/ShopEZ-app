@@ -1,6 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { CartContext } from "./cart-context";
-import { useCatalog } from "./catalog-context";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useCatalog } from "./CatalogProvider";
+
+const CartContext = createContext(null);
+
+export function useCart() {
+  const context = useContext(CartContext);
+  if (!context) {
+    throw new Error("useCart must be used within a CartProvider");
+  }
+  return context;
+}
 import { MAX_QUANTITY_PER_ITEM } from "../config/store";
 import { readJSON, writeJSON } from "../lib/storage";
 

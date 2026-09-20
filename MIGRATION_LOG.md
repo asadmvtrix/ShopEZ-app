@@ -640,3 +640,93 @@ Phase 5 did **not** commit.
 
 ---
 
+## Phase 6 — Auth, account, checkout (2026-09-20)
+
+### What Phase 6 required
+Migrate Auth, Account, Checkout, CheckoutSuccess, CheckoutProgress, RequireAuth, NotFound, GoogleGlyph off MUI.
+Keep react-hook-form on Auth; Input/Label/Field with error text + `aria-invalid` / `aria-describedby`.
+Checkout still redirects to Stripe; do not touch redirect, webhook, or services. OAuth redirect behavior unchanged.
+
+### Docs grounding
+- Added `alert`, `dialog`, `tabs`, `field` via `npx shadcn@latest add` (Base UI; Field skipped overwriting Label/Separator).
+- RHF pattern from shadcn docs: `Controller` → `Field` + `FieldLabel` + `Input` + `FieldError` / `FieldDescription`.
+- Router CTAs: `buttonVariants` + `Link` (Phases 3–5). Tabs controlled `value` / `onValueChange` for Auth signup/login (URL mode sync unchanged).
+- Dialog: controlled `open` / `onOpenChange`; dismiss blocked while delete is busy; `showCloseButton={!busy}`.
+
+### Files changed (Phase 6 only)
+| Path | Change |
+|---|---|
+| `src/pages/Auth.jsx` | Tabs + Field/Input RHF; Alert tones; lucide Eye/Loader2; Google button; no MUI |
+| `src/pages/Account.jsx` | PageContainer; section nav; Dialog delete; Field forms; theme toggle group; order cards |
+| `src/pages/Checkout.jsx` | PageContainer; read-only email Field; Stripe pay CTA; OrderSummary sticky |
+| `src/pages/CheckoutSuccess.jsx` | PageContainer; confirmation / error / loading; Separator summary |
+| `src/pages/NotFound.jsx` | Tailwind + `buttonVariants` links |
+| `src/components/CheckoutProgress.jsx` | semantic `<nav>` + text steps |
+| `src/components/RequireAuth.jsx` | Loader2 spinner; Navigate unchanged |
+| `src/components/GoogleGlyph.jsx` | plain SVG (Google brand fills kept) |
+| `src/components/ui/{alert,dialog,tabs,field}.jsx` | **new** (shadcn) |
+| `MIGRATION_LOG.md` | this Phase 6 section |
+
+Auth/account/checkout **business logic** (Supabase auth, `usePayment` / `payWithStripe`, `fetchCheckoutSession`, orders list, OAuth flags): **unchanged**.
+Webhook / `services/stripe` / `api/*`: **not touched**.
+
+### Deviations / decisions
+1. **Alert severities** — shadcn Alert only ships `default` / `destructive`. Success/warning/info use token borders (`border-success/40`, `border-warning/40`, etc.) via className helper; no new deps.
+2. **Auth Tabs** — tab list only (no `TabsContent`); forms still keyed by URL `mode` as before.
+3. **Checkout email** — was plain MUI TextField (not RHF); kept non-RHF Input + FieldLabel/Description for parity.
+4. **Account theme toggle** — exclusive button group (same as Home density), not a new ToggleGroup package.
+5. **GoogleGlyph** — Google brand hex fills retained on the SVG (logo accuracy); not theme tokens.
+6. **Lint** — back to **30** baseline after fixing unused-binding false positive on theme icons; Phase 6 files otherwise clean.
+7. Did **not** commit.
+
+### Verification
+| Check | Result |
+|---|---|
+| `npm run build` | **PASS** — vite 8.3.0 |
+| `npm run lint` | **FAIL** — 30 errors (unchanged vs Phase 3–5 baseline) |
+| Phase 6 files `@mui` imports | **none** |
+| Remaining `@mui` under `src` | **3 files** (Phase 7: `ColorModeProvider`, `main.jsx` StyledEngineProvider, `theme/index.js`) |
+
+#### Bundle sizes after Phase 6 (raw + gzip level 9)
+
+| Asset class | Raw | Gzip (level 9) | vs Phase 5 |
+|---|---:|---:|---|
+| All JS | 951.25 kB (974,081 B) | 306.04 kB (313,383 B) | **−~149 kB raw** (auth/account/checkout off MUI) |
+| All CSS | 92.96 kB (95,192 B) | 15.34 kB (15,712 B) | **+~18 kB raw** (Alert/Dialog/Tabs/Field utilities) |
+| **JS + CSS** | **1044.21 kB** | **321.38 kB** | |
+
+MUI chunk ~99.2 kB raw / ~34.2 kB gzip (down from Phase 5 ~275 / ~85) — only theme bridge + CssBaseline remain.
+
+### Manual test checklist (375px & 1280px, light & dark)
+- [ ] Auth: Create account / Sign in tabs sync URL `?mode=`; validation + password visibility; Google continue
+- [ ] Auth: reset request / update-password flows; email-confirm pending; OAuth timeout / signing-in states
+- [ ] Account: section nav + `?section=`; profile name save; sign out flash
+- [ ] Account: linked accounts connect/disconnect; password change (when allowed)
+- [ ] Account: theme system/light/dark; delete dialog focus + phrase gate; busy blocks dismiss
+- [ ] Account: orders loading / empty / list cards
+- [ ] Checkout: empty cart state; canceled alert; Pay → Stripe redirect (do not complete paid charge)
+- [ ] CheckoutSuccess: loading → confirmed / pending / error paths with `session_id`
+- [ ] RequireAuth: loading spinner then redirect to login with `redirect=`
+- [ ] NotFound: home + browse links
+- [ ] No unexpected console errors on happy paths
+
+### Suggested commit message (when you choose to commit)
+
+```
+chore: migrate auth, account, and checkout UI (Phase 6)
+
+Replace Auth/Account/Checkout MUI surfaces with Tailwind/shadcn
+Field, Tabs, Dialog, and Alert while keeping RHF and Stripe redirect.
+```
+
+Phase 6 did **not** commit.
+
+### Blockers / notes for Phase 7
+1. Only 3 `@mui` call sites left: `ColorModeProvider` (ThemeProvider/CssBaseline/useMediaQuery), `main.jsx` (StyledEngineProvider/GlobalStyles), `theme/index.js` (`createTheme`).
+2. Phase 7: strip MUI providers/layers, delete `theme/index.js` (keep `motion.js` if used), uninstall `@mui/*` + `@emotion/*`, compare bundle to Phase 0 baseline.
+3. Replace `useMediaQuery` with a tiny `matchMedia` helper (or CSS-only) when reducing ColorModeProvider.
+4. Lint still red (30) — cleanup timing still open.
+5. Dirty WIP still mixed with migration diffs — commit/stash strategy still open.
+6. GoogleGlyph brand hex fills are intentional; do not force them onto CSS tokens in Phase 7.
+
+---

@@ -1,7 +1,6 @@
 import { Navigate, useLocation } from "react-router-dom";
-import Box from "@mui/material/Box";
-import CircularProgress from "@mui/material/CircularProgress";
-import { useAuth } from "../context/auth-context";
+import { Loader2 } from "lucide-react";
+import { useAuth } from "../context/AuthProvider";
 
 export default function RequireAuth({ children }) {
   const { user, loading } = useAuth();
@@ -9,9 +8,9 @@ export default function RequireAuth({ children }) {
 
   if (loading) {
     return (
-      <Box sx={{ display: "grid", placeItems: "center", py: 10 }}>
-        <CircularProgress aria-label="Checking sign-in" />
-      </Box>
+      <div className="grid place-items-center py-20">
+        <Loader2 className="size-8 animate-spin text-muted-foreground" aria-label="Checking sign-in" />
+      </div>
     );
   }
 

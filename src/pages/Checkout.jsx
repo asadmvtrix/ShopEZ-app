@@ -1,30 +1,21 @@
 import { useState } from "react";
 import { Link as RouterLink, useSearchParams } from "react-router-dom";
-import Alert from "@mui/material/Alert";
-import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import CircularProgress from "@mui/material/CircularProgress";
-import Container from "@mui/material/Container";
-import Paper from "@mui/material/Paper";
-import Stack from "@mui/material/Stack";
-import TextField from "@mui/material/TextField";
-import Typography from "@mui/material/Typography";
-import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+import { Loader2, Lock } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import CheckoutProgress from "../components/CheckoutProgress";
 import OrderSummary from "../components/OrderSummary";
-import { useCart } from "../context/cart-context";
-import { useAuth } from "../context/auth-context";
-import { usePayment } from "../hooks/usePayment";
-import { isStripeConfigured } from "../services/stripe";
+import PageContainer from "../components/PageContainer";
+import { useCart } from "../context/CartProvider";
+import { useAuth } from "../context/AuthProvider";
+import { isStripeConfigured, usePayment } from "../services/stripe";
 import { calculateTotals, formatPrice } from "../config/store";
-import { MONO } from "../theme";
 
 function SectionLabel({ children }) {
-  return (
-    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.25 }}>
-      {children}
-    </Typography>
-  );
+  return <p className="mb-3 text-sm font-medium text-muted-foreground">{children}</p>;
 }
 
 export default function Checkout() {
@@ -48,125 +39,110 @@ export default function Checkout() {
 
   if (items.length === 0) {
     return (
-      <Container maxWidth="sm" sx={{ py: { xs: 5, md: 8 } }}>
-        <Paper variant="outlined" sx={{ p: { xs: 4, md: 6 }, textAlign: "center" }}>
-          <Typography variant="h3" component="h1" gutterBottom>
+      <div className="mx-auto w-full max-w-lg px-4 py-10 sm:px-6 md:py-16">
+        <div className="rounded-[var(--radius)] border border-border bg-card px-8 py-12 text-center md:px-16 md:py-16">
+          <h1 className="text-xl font-semibold tracking-tight sm:text-[1.375rem]">
             There is nothing to pay for
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+          </h1>
+          <p className="mt-2 mb-6 text-sm text-muted-foreground">
             Add something to your cart before checking out.
-          </Typography>
-          <Button component={RouterLink} to="/browse" variant="contained">
+          </p>
+          <RouterLink to="/browse" className={cn(buttonVariants(), "inline-flex")}>
             Browse products
-          </Button>
-        </Paper>
-      </Container>
+          </RouterLink>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 } }}>
-      <Typography variant="h1" gutterBottom>
-        Checkout
-      </Typography>
+    <PageContainer className="py-6 md:py-10">
+      <h1 className="mb-2 text-3xl font-semibold tracking-tight md:text-4xl">Checkout</h1>
 
       <CheckoutProgress step={1} />
 
-      <Box
-        sx={{
-          display: "grid",
-          gridTemplateColumns: { xs: "1fr", md: "1fr 340px" },
-          gap: { xs: 3, md: 4 },
-          alignItems: "start",
-        }}
-      >
-        <Box>
+      <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-[1fr_340px] md:gap-8">
+        <div>
           {canceled && (
-            <Alert severity="warning" sx={{ mb: 3 }}>
-              Payment was cancelled. Your cart is still here whenever you’re ready.
+            <Alert className="mb-6 border-warning/40 text-warning *:data-[slot=alert-description]:text-warning/90">
+              <AlertDescription>
+                Payment was cancelled. Your cart is still here whenever you’re ready.
+              </AlertDescription>
             </Alert>
           )}
 
           <SectionLabel>Contact</SectionLabel>
-          <TextField
-            label="Email"
-            value={user.email}
-            helperText="This email is used for your ShopEZ account and Stripe checkout."
-            slotProps={{ input: { readOnly: true } }}
-            sx={{ mb: 3 }}
-          />
+          <Field className="mb-6">
+            <FieldLabel htmlFor="checkout-email">Email</FieldLabel>
+            <Input
+              id="checkout-email"
+              value={user.email}
+              readOnly
+              aria-describedby="checkout-email-desc"
+              className="h-10"
+            />
+            <FieldDescription id="checkout-email-desc">
+              This email is used for your ShopEZ account and Stripe checkout.
+            </FieldDescription>
+          </Field>
 
           <SectionLabel>Payment</SectionLabel>
-          <Paper variant="outlined" sx={{ p: { xs: 2, sm: 2.5 } }}>
+          <div className="rounded-[var(--radius)] border border-border bg-card p-4 sm:p-5">
             {!stripeReady ? (
-              <Alert severity="warning">
-                Stripe isn’t configured. Add{" "}
-                <Box component="span" sx={{ fontFamily: MONO }}>
-                  VITE_STRIPE_PUBLISHABLE_KEY
-                </Box>{" "}
-                and the server secrets listed in{" "}
-                <Box component="span" sx={{ fontFamily: MONO }}>
-                  .env.example
-                </Box>
-                , then redeploy.
+              <Alert className="border-warning/40 text-warning *:data-[slot=alert-description]:text-warning/90">
+                <AlertDescription>
+                  Stripe isn’t configured. Add{" "}
+                  <span className="font-mono">VITE_STRIPE_PUBLISHABLE_KEY</span> and the server
+                  secrets listed in <span className="font-mono">.env.example</span>, then redeploy.
+                </AlertDescription>
               </Alert>
             ) : (
               <>
-                <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 1.5 }}>
-                  <LockOutlinedIcon fontSize="small" sx={{ color: "text.secondary" }} />
-                  <Typography variant="h5">Pay securely with Stripe</Typography>
-                </Stack>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
+                <div className="mb-3 flex items-center gap-2">
+                  <Lock className="size-4 text-muted-foreground" aria-hidden />
+                  <h2 className="text-base font-semibold">Pay securely with Stripe</h2>
+                </div>
+                <p className="mb-5 text-sm text-muted-foreground">
                   You’ll finish on Stripe’s checkout page. In test mode use{" "}
-                  <Box component="span" sx={{ fontFamily: MONO }}>
-                    4242 4242 4242 4242
-                  </Box>
-                  .
-                </Typography>
+                  <span className="font-mono">4242 4242 4242 4242</span>.
+                </p>
 
                 {(localError || error) && (
-                  <Alert severity="error" sx={{ mb: 2 }}>
-                    {localError || error}
+                  <Alert variant="destructive" className="mb-4">
+                    <AlertDescription>{localError || error}</AlertDescription>
                   </Alert>
                 )}
 
                 <Button
-                  variant="contained"
-                  color="secondary"
-                  size="large"
-                  fullWidth
+                  variant="secondary"
+                  size="lg"
+                  className="h-10 w-full"
                   disabled={isProcessing}
                   onClick={handleStripePay}
-                  startIcon={
-                    isProcessing ? (
-                      <CircularProgress size={18} color="inherit" />
-                    ) : (
-                      <LockOutlinedIcon />
-                    )
-                  }
                 >
+                  {isProcessing ? (
+                    <Loader2 className="size-4 animate-spin" aria-hidden />
+                  ) : (
+                    <Lock className="size-4" aria-hidden />
+                  )}
                   {isProcessing ? "Redirecting…" : `Pay ${formatPrice(total)}`}
                 </Button>
               </>
             )}
-          </Paper>
-        </Box>
+          </div>
+        </div>
 
-        <Box
-          sx={{
-            position: { md: "sticky" },
-            top: 88,
-            maxHeight: { md: "calc(100vh - 112px)" },
-            overflowY: { md: "auto" },
-          }}
-        >
+        <div className="md:sticky md:top-[88px] md:max-h-[calc(100vh-112px)] md:overflow-y-auto">
           <OrderSummary items={items} itemised>
-            <Button component={RouterLink} to="/cart" fullWidth>
+            <RouterLink
+              to="/cart"
+              className={cn(buttonVariants({ variant: "outline" }), "inline-flex w-full")}
+            >
               Back to cart
-            </Button>
+            </RouterLink>
           </OrderSummary>
-        </Box>
-      </Box>
-    </Container>
+        </div>
+      </div>
+    </PageContainer>
   );
 }

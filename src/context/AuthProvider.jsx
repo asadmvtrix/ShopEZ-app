@@ -1,7 +1,21 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { AuthContext } from "./auth-context";
-import { authRedirectTo, isSupabaseConfigured, supabase } from "../lib/supabase";
-import { clearGoogleOAuthAttempt, markGoogleOAuthAttempt } from "../lib/oauth";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  authRedirectTo,
+  clearGoogleOAuthAttempt,
+  isSupabaseConfigured,
+  markGoogleOAuthAttempt,
+  supabase,
+} from "../lib/supabase";
+
+const AuthContext = createContext(null);
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
+}
 import { remove } from "../lib/storage";
 import { toUserMessage } from "../lib/errors";
 
