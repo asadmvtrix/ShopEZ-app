@@ -112,7 +112,7 @@ export default function Navbar() {
                 {categories.map((category) => (
                   <DropdownMenuItem
                     key={category}
-                    render={<RouterLink to={categoryPath(category)} />}
+                    onClick={() => navigate(categoryPath(category))}
                   >
                     {category}
                   </DropdownMenuItem>
@@ -185,7 +185,11 @@ export default function Navbar() {
                   <div className="text-xs text-muted-foreground">{user.email}</div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem render={<RouterLink to="/account" />}>
+                <DropdownMenuItem
+                  onClick={() => {
+                    navigate("/account");
+                  }}
+                >
                   Account settings
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleLogout}>Sign out</DropdownMenuItem>

@@ -602,6 +602,9 @@ export default function Account() {
   const { preference, setPreference } = useColorMode();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  if (!user) return null;
+
   const forceSetup = searchParams.get("setup") === "1" || user.needsName;
 
   const sectionParam = searchParams.get("section");
