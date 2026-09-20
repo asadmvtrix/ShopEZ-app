@@ -558,3 +558,85 @@ Phase 4 did **not** commit.
 
 ---
 
+## Phase 5 — Product details and cart (2026-09-20)
+
+### What Phase 5 required
+Migrate ProductDetails, Cart, OrderSummary, and quantity controls off MUI.
+Product details: gallery, specs as semantic table/dl, stock/shipping notes as today.
+Cart: line items, qty controls (≥40px targets), remove, totals via existing logic.
+Do not change cart/catalog context APIs or checkout redirect behavior.
+
+### Docs grounding
+- Reused Phase 4 Select (`items` on root) for ProductDetails qty; Label association via `htmlFor` / trigger `id`.
+- Router CTAs: `buttonVariants` + `Link` (not Button `render`), same as Phases 3–4.
+- No new shadcn packages: success “Added to cart” callout and free-shipping bar are tokenized markup (Alert/Progress deferred; Phase 6 Auth will likely add Alert).
+
+### Files changed (Phase 5 only)
+| Path | Change |
+|---|---|
+| `src/pages/ProductDetails.jsx` | PageContainer; gallery sticky on `md+`; Select qty; Badge stock; dl specs; lucide service icons; CSS enter for add confirmation |
+| `src/pages/Cart.jsx` | PageContainer; line-item cards; qty ± / remove (≥40px mobile); OrderSummary sticky sidebar; empty state |
+| `src/components/OrderSummary.jsx` | card surface + Separator; itemised list; determinate free-shipping bar (div + `role="progressbar"`) |
+| `MIGRATION_LOG.md` | this Phase 5 section |
+
+Cart/product/order calculation APIs (`useCart`, `calculateTotals`, navigate to `/checkout`): **unchanged**.
+ProductImage: wrapper-only consumers (existing height API).
+
+### Deviations / decisions
+1. **Sticky buy box on mobile** — Phase brief mentions it; current MUI layout sticky’d the **gallery** on `md+`, not the buy box. Kept gallery sticky for visual parity; mobile buy box stays in document flow.
+2. **Specs** — semantic `<dl>` / `<dt>` / `<dd>` with `font-mono` values (brief); layout still label/value rows.
+3. **Collapse + Alert** — replaced with conditional success banner + `motion-safe:animate-content-enter` (no Alert package this slice).
+4. **LinearProgress** — plain secondary fill bar with dynamic width inline style (allowed for dynamic values).
+5. **Continue shopping** — outline `buttonVariants` link (was MUI text Button); still secondary to checkout CTA.
+6. **Lint** — still **30** errors (same baseline as Phase 3/4); Phase 5 files clean after fixing unused-binding false positive on ServiceRow.
+7. Did **not** commit.
+
+### Verification
+| Check | Result |
+|---|---|
+| `npm run build` | **PASS** — vite 8.3.0 |
+| `npm run lint` | **FAIL** — 30 errors (unchanged vs Phase 3/4 baseline) |
+| Phase 5 files `@mui` imports | **none** |
+| Remaining `@mui` under `src` | 11 files (Phase 6–7: auth/account/checkout, theme bridge, main StyledEngineProvider) |
+
+#### Bundle sizes after Phase 5 (raw + gzip level 9)
+
+| Asset class | Raw | Gzip (level 9) | vs Phase 4 |
+|---|---:|---:|---|
+| All JS | 1099.96 kB (1,126,358 B) | 346.36 kB (354,668 B) | **−~19 kB raw** (details/cart off MUI; Select shared) |
+| All CSS | 74.97 kB (76,766 B) | 13.03 kB (13,339 B) | **+~3 kB raw** |
+| **JS + CSS** | **1174.97 kB** | **359.38 kB** | |
+
+MUI chunk ~275.2 kB raw / ~84.9 kB gzip (down from Phase 4 ~305.9 / ~94.0).
+
+### Manual test checklist (375px & 1280px, light & dark)
+- [ ] Product details: back link to category browse; sticky gallery on desktop; image loads via ProductImage
+- [ ] Qty Select (disabled at max); Add to cart; success banner + View cart; max-quantity label
+- [ ] Specs dl rows; delivery/returns/warranty notes; related “More in {category}” grid
+- [ ] Missing product id → flash error + redirect `/browse`
+- [ ] Cart: empty state → Browse products; line qty ± (≥40px on mobile), remove, line total on `sm+`
+- [ ] Order summary: subtotal/shipping/tax/total; free-shipping progress when under threshold
+- [ ] Proceed to checkout → `/checkout` (page still MUI until Phase 6); Continue shopping → `/browse`
+- [ ] Checkout page still renders OrderSummary (itemised) without layout break
+
+### Suggested commit message (when you choose to commit)
+
+```
+chore: migrate product details and cart UI (Phase 5)
+
+Replace ProductDetails, Cart, and OrderSummary MUI surfaces with
+Tailwind/shadcn while keeping cart totals and checkout navigation.
+```
+
+Phase 5 did **not** commit.
+
+### Blockers / notes for Phase 6
+1. Auth / Account / Checkout / CheckoutSuccess / CheckoutProgress / RequireAuth / NotFound / GoogleGlyph — still on MUI.
+2. Checkout still owns Stripe redirect + react-hook-form TextFields; do not touch webhook/services.
+3. Likely add shadcn Alert (+ Dialog for Account delete, Tabs for Auth) when that slice needs them.
+4. Lint still red (30) — cleanup timing still open.
+5. Dirty WIP still mixed with migration diffs — commit/stash strategy still open.
+6. Bundle still larger than Phase 0 until Phase 7 uninstalls MUI; OrderSummary already shared with Checkout.
+
+---
+

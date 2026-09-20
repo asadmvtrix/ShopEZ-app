@@ -1,35 +1,30 @@
 import { Link as RouterLink, useNavigate } from "react-router-dom";
-import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import Container from "@mui/material/Container";
-import IconButton from "@mui/material/IconButton";
-import Paper from "@mui/material/Paper";
-import Stack from "@mui/material/Stack";
-import Typography from "@mui/material/Typography";
-import AddIcon from "@mui/icons-material/Add";
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlined";
-import RemoveIcon from "@mui/icons-material/Remove";
-import ShoppingCartOutlinedIcon from "@mui/icons-material/ShoppingCartOutlined";
+import { Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import OrderSummary from "../components/OrderSummary";
+import PageContainer from "../components/PageContainer";
 import ProductImage from "../components/ProductImage";
-import { useCart } from "../context/cart-context";
+import { useCart } from "../context/CartProvider";
 import { MAX_QUANTITY_PER_ITEM, formatPrice } from "../config/store";
-import { MONO } from "../theme";
 
 function EmptyCart() {
   return (
-    <Paper variant="outlined" sx={{ p: { xs: 4, md: 8 }, textAlign: "center" }}>
-      <ShoppingCartOutlinedIcon sx={{ fontSize: 48, color: "text.disabled" }} />
-      <Typography variant="h3" sx={{ mt: 1.5 }}>
+    <div className="rounded-[var(--radius)] border border-border bg-card px-8 py-12 text-center md:px-16 md:py-16">
+      <ShoppingCart className="mx-auto size-12 text-muted-foreground/40" aria-hidden />
+      <h2 className="mt-3 text-xl font-semibold tracking-tight sm:text-[1.375rem]">
         Your cart is empty
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 3 }}>
+      </h2>
+      <p className="mt-2 mb-6 text-sm text-muted-foreground">
         Once you add something it will stay here, even if you close the tab.
-      </Typography>
-      <Button component={RouterLink} to="/browse" variant="contained" size="large">
+      </p>
+      <RouterLink
+        to="/browse"
+        className={cn(buttonVariants({ size: "lg" }), "inline-flex")}
+      >
         Browse products
-      </Button>
-    </Paper>
+      </RouterLink>
+    </div>
   );
 }
 
@@ -38,156 +33,103 @@ export default function Cart() {
   const navigate = useNavigate();
 
   return (
-    <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 } }}>
-      <Typography variant="h1" gutterBottom>
-        Your cart
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+    <PageContainer className="py-6 md:py-10">
+      <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">Your cart</h1>
+      <p className="mb-6 text-sm text-muted-foreground">
         {itemCount === 0
           ? "No items yet"
           : `${itemCount} ${itemCount === 1 ? "item" : "items"}`}
-      </Typography>
+      </p>
 
       {items.length === 0 ? (
         <EmptyCart />
       ) : (
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: { xs: "1fr", md: "1fr 340px" },
-            gap: { xs: 3, md: 4 },
-            alignItems: "start",
-          }}
-        >
-          <Stack spacing={2}>
+        <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-[1fr_340px] md:gap-8">
+          <ul className="flex flex-col gap-4">
             {items.map((item) => (
-              <Paper
+              <li
                 key={item.id}
-                variant="outlined"
-                sx={{
-                  p: 2,
-                  display: "grid",
-                  gridTemplateColumns: { xs: "88px 1fr", sm: "112px 1fr auto" },
-                  gap: 2,
-                  alignItems: "center",
-                }}
+                className="grid grid-cols-[88px_1fr] items-center gap-4 rounded-[var(--radius)] border border-border bg-card p-4 sm:grid-cols-[112px_1fr_auto]"
               >
-                <Box
-                  component={RouterLink}
+                <RouterLink
                   to={`/products/${item.id}`}
-                  sx={{ border: 1, borderColor: "divider", borderRadius: 1, overflow: "hidden" }}
+                  className="overflow-hidden rounded-[var(--radius)] border border-border"
                 >
                   <ProductImage product={item.product} height={88} />
-                </Box>
+                </RouterLink>
 
-                <Box sx={{ minWidth: 0 }}>
-                  <Typography variant="caption" color="text.secondary">
-                    {item.product.category}
-                  </Typography>
-                  <Typography
-                    component={RouterLink}
+                <div className="min-w-0">
+                  <p className="text-xs text-muted-foreground">{item.product.category}</p>
+                  <RouterLink
                     to={`/products/${item.id}`}
-                    variant="subtitle1"
-                    sx={{
-                      display: "block",
-                      fontWeight: 600,
-                      color: "text.primary",
-                      textDecoration: "none",
-                      "&:hover": { textDecoration: "underline" },
-                    }}
+                    className="block text-base font-semibold text-foreground no-underline hover:underline"
                   >
                     {item.product.name}
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ fontFamily: MONO, mt: 0.5 }}
-                  >
+                  </RouterLink>
+                  <p className="mt-1 font-mono text-sm text-muted-foreground">
                     {formatPrice(item.product.price)} each
-                  </Typography>
+                  </p>
 
-                  <Stack direction="row" spacing={1} sx={{ alignItems: "center", mt: 1.5 }}>
-                    <Box
-                      sx={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        border: 1,
-                        borderColor: "divider",
-                        borderRadius: 1,
-                      }}
-                    >
-                      <IconButton
-                        size="small"
+                  <div className="mt-3 flex items-center gap-2">
+                    <div className="inline-flex items-center rounded-[var(--radius)] border border-border">
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
                         onClick={() => updateQuantity(item.id, item.quantity - 1)}
                         aria-label={`Decrease quantity of ${item.product.name}`}
+                        className="size-10 sm:size-7"
                       >
-                        <RemoveIcon fontSize="small" />
-                      </IconButton>
-                      <Typography
-                        sx={{ minWidth: 28, textAlign: "center", fontVariantNumeric: "tabular-nums" }}
-                      >
-                        {item.quantity}
-                      </Typography>
-                      <IconButton
-                        size="small"
+                        <Minus />
+                      </Button>
+                      <span className="min-w-7 text-center tabular-nums">{item.quantity}</span>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
                         onClick={() => updateQuantity(item.id, item.quantity + 1)}
                         disabled={item.quantity >= MAX_QUANTITY_PER_ITEM}
                         aria-label={`Increase quantity of ${item.product.name}`}
+                        className="size-10 sm:size-7"
                       >
-                        <AddIcon fontSize="small" />
-                      </IconButton>
-                    </Box>
+                        <Plus />
+                      </Button>
+                    </div>
 
-                    <IconButton
-                      size="small"
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
                       onClick={() => removeFromCart(item.id)}
                       aria-label={`Remove ${item.product.name} from cart`}
+                      className="size-10 sm:size-7"
                     >
-                      <DeleteOutlineIcon fontSize="small" />
-                    </IconButton>
-                  </Stack>
-                </Box>
+                      <Trash2 />
+                    </Button>
+                  </div>
+                </div>
 
-                <Typography
-                  variant="h5"
-                  sx={{
-                    fontFamily: MONO,
-                    textAlign: "right",
-                    display: { xs: "none", sm: "block" },
-                  }}
-                >
+                <p className="hidden text-right font-mono text-base font-semibold sm:block">
                   {formatPrice(item.product.price * item.quantity)}
-                </Typography>
-              </Paper>
+                </p>
+              </li>
             ))}
-          </Stack>
+          </ul>
 
-          <Box
-            sx={{
-              position: { md: "sticky" },
-              top: 88,
-              maxHeight: { md: "calc(100vh - 112px)" },
-              overflowY: { md: "auto" },
-            }}
-          >
+          <div className="md:sticky md:top-[88px] md:max-h-[calc(100vh-112px)] md:overflow-y-auto">
             <OrderSummary items={items}>
-              <Stack spacing={1.5}>
-                <Button
-                  variant="contained"
-                  size="large"
-                  fullWidth
-                  onClick={() => navigate("/checkout")}
-                >
+              <div className="flex flex-col gap-3">
+                <Button size="lg" className="w-full" onClick={() => navigate("/checkout")}>
                   Proceed to checkout
                 </Button>
-                <Button component={RouterLink} to="/browse" fullWidth>
+                <RouterLink
+                  to="/browse"
+                  className={cn(buttonVariants({ variant: "outline" }), "w-full")}
+                >
                   Continue shopping
-                </Button>
-              </Stack>
+                </RouterLink>
+              </div>
             </OrderSummary>
-          </Box>
-        </Box>
+          </div>
+        </div>
       )}
-    </Container>
+    </PageContainer>
   );
 }

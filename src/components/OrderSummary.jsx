@@ -1,25 +1,21 @@
-import Box from "@mui/material/Box";
-import Divider from "@mui/material/Divider";
-import LinearProgress from "@mui/material/LinearProgress";
-import Paper from "@mui/material/Paper";
-import Stack from "@mui/material/Stack";
-import Typography from "@mui/material/Typography";
+import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 import { FREE_SHIPPING_THRESHOLD, TAX_RATE, calculateTotals, formatPrice } from "../config/store";
-import { MONO } from "../theme";
 
 function Row({ label, value, strong }) {
   return (
-    <Stack direction="row" spacing={2} sx={{ justifyContent: "space-between" }}>
-      <Typography variant={strong ? "h5" : "body2"} color={strong ? "text.primary" : "text.secondary"}>
-        {label}
-      </Typography>
-      <Typography
-        variant={strong ? "h5" : "body2"}
-        sx={{ fontFamily: MONO }}
+    <div className="flex justify-between gap-4">
+      <span
+        className={cn(
+          strong ? "text-base font-semibold text-foreground" : "text-sm text-muted-foreground"
+        )}
       >
+        {label}
+      </span>
+      <span className={cn("font-mono", strong ? "text-base font-semibold" : "text-sm")}>
         {value}
-      </Typography>
-    </Stack>
+      </span>
+    </div>
   );
 }
 
@@ -27,67 +23,70 @@ export default function OrderSummary({ items, itemised = false, children }) {
   const subtotal = items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   const { shipping, tax, total } = calculateTotals(subtotal);
   const remainingForFreeShipping = FREE_SHIPPING_THRESHOLD - subtotal;
+  const freeShippingProgress = Math.min(100, (subtotal / FREE_SHIPPING_THRESHOLD) * 100);
 
   return (
-    <Paper variant="outlined" sx={{ p: 3 }}>
-      <Typography variant="h3" gutterBottom>
+    <div className="rounded-[var(--radius)] border border-border bg-card p-6">
+      <h2 className="mb-2 text-xl font-semibold tracking-tight sm:text-[1.375rem]">
         Order summary
-      </Typography>
+      </h2>
 
       {itemised && (
         <>
-          <Stack spacing={1} sx={{ my: 2 }}>
+          <ul className="my-4 space-y-2">
             {items.map((item) => (
-              <Stack
-                key={item.id}
-                direction="row"
-                spacing={2}
-                sx={{ justifyContent: "space-between" }}
-              >
-                <Typography variant="body2" color="text.secondary">
+              <li key={item.id} className="flex justify-between gap-4 text-sm">
+                <span className="text-muted-foreground">
                   {item.product.name}
-                  <Box component="span" sx={{ color: "text.disabled" }}>
-                    {" "}
-                    &times;{item.quantity}
-                  </Box>
-                </Typography>
-                <Typography variant="body2" sx={{ fontFamily: MONO }}>
+                  <span className="text-muted-foreground/60"> &times;{item.quantity}</span>
+                </span>
+                <span className="font-mono">
                   {formatPrice(item.product.price * item.quantity)}
-                </Typography>
-              </Stack>
+                </span>
+              </li>
             ))}
-          </Stack>
-          <Divider />
+          </ul>
+          <Separator />
         </>
       )}
 
-      <Stack spacing={1.25} sx={{ my: 2 }}>
+      <div className="my-4 space-y-2.5">
         <Row label="Subtotal" value={formatPrice(subtotal)} />
         <Row label="Shipping" value={shipping === 0 ? "Free" : formatPrice(shipping)} />
-        <Row label={`Estimated tax (${Math.round(TAX_RATE * 100)}%)`} value={formatPrice(tax)} />
-      </Stack>
+        <Row
+          label={`Estimated tax (${Math.round(TAX_RATE * 100)}%)`}
+          value={formatPrice(tax)}
+        />
+      </div>
 
-      <Divider />
+      <Separator />
 
-      <Box sx={{ my: 2 }}>
+      <div className="my-4">
         <Row label="Total" value={formatPrice(total)} strong />
-      </Box>
+      </div>
 
       {remainingForFreeShipping > 0 && (
-        <Box sx={{ mb: 2 }}>
-          <Typography variant="caption" color="text.secondary">
+        <div className="mb-4">
+          <p className="text-xs text-muted-foreground">
             Add {formatPrice(remainingForFreeShipping)} more for free delivery
-          </Typography>
-          <LinearProgress
-            variant="determinate"
-            color="secondary"
-            value={(subtotal / FREE_SHIPPING_THRESHOLD) * 100}
-            sx={{ mt: 0.75, height: 6, borderRadius: 3 }}
-          />
-        </Box>
+          </p>
+          <div
+            className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(freeShippingProgress)}
+            aria-label="Progress toward free delivery"
+          >
+            <div
+              className="h-full rounded-full bg-secondary transition-[width] duration-200"
+              style={{ width: `${freeShippingProgress}%` }}
+            />
+          </div>
+        </div>
       )}
 
       {children}
-    </Paper>
+    </div>
   );
 }

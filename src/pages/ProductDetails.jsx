@@ -1,29 +1,32 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link as RouterLink, Navigate, useParams } from "react-router-dom";
-import Alert from "@mui/material/Alert";
-import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import Chip from "@mui/material/Chip";
-import Collapse from "@mui/material/Collapse";
-import Container from "@mui/material/Container";
-import Divider from "@mui/material/Divider";
-import Link from "@mui/material/Link";
-import MenuItem from "@mui/material/MenuItem";
-import Paper from "@mui/material/Paper";
-import Stack from "@mui/material/Stack";
-import TextField from "@mui/material/TextField";
-import Typography from "@mui/material/Typography";
-import AddShoppingCartIcon from "@mui/icons-material/AddShoppingCart";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutlined";
-import AssignmentReturnOutlinedIcon from "@mui/icons-material/AssignmentReturnOutlined";
-import LocalShippingOutlinedIcon from "@mui/icons-material/LocalShippingOutlined";
-import VerifiedUserOutlinedIcon from "@mui/icons-material/VerifiedUserOutlined";
+import {
+  ArrowLeft,
+  CheckCircle,
+  Package,
+  ShoppingCart,
+  ShieldCheck,
+  Truck,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
+import PageContainer from "../components/PageContainer";
 import ProductImage from "../components/ProductImage";
 import ProductGrid from "../components/ProductGrid";
 import SectionHeader from "../components/SectionHeader";
-import { useCart } from "../context/cart-context";
-import { useCatalog } from "../context/catalog-context";
+import { useCart } from "../context/CartProvider";
+import { useCatalog } from "../context/CatalogProvider";
 import { setFlash } from "../lib/flash";
 import {
   FREE_SHIPPING_THRESHOLD,
@@ -32,25 +35,13 @@ import {
   formatPrice,
   formatPriceShort,
 } from "../config/store";
-import { MONO } from "../theme";
 
 function SpecRow({ label, value }) {
   return (
-    <Stack
-      direction={{ xs: "column", sm: "row" }}
-      spacing={{ xs: 0, sm: 2 }}
-      sx={{ justifyContent: "space-between", py: 1 }}
-    >
-      <Typography variant="body2" color="text.secondary">
-        {label}
-      </Typography>
-      <Typography
-        variant="body2"
-        sx={{ fontWeight: 500, textAlign: { sm: "right" }, wordBreak: "break-word" }}
-      >
-        {value}
-      </Typography>
-    </Stack>
+    <div className="flex flex-col justify-between gap-0 py-2 sm:flex-row sm:gap-4">
+      <dt className="text-sm text-muted-foreground">{label}</dt>
+      <dd className="font-mono text-sm font-medium break-words sm:text-right">{value}</dd>
+    </div>
   );
 }
 
@@ -59,17 +50,13 @@ function ServiceRow(props) {
   const { title, body } = props;
 
   return (
-    <Stack direction="row" spacing={1.5} sx={{ alignItems: "flex-start" }}>
-      <Icon fontSize="small" sx={{ color: "text.secondary", mt: 0.25, flexShrink: 0 }} />
-      <Box>
-        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-          {title}
-        </Typography>
-        <Typography variant="caption" color="text.secondary">
-          {body}
-        </Typography>
-      </Box>
-    </Stack>
+    <div className="flex items-start gap-3">
+      <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
+      <div>
+        <p className="text-sm font-semibold">{title}</p>
+        <p className="text-xs text-muted-foreground">{body}</p>
+      </div>
+    </div>
   );
 }
 
@@ -111,6 +98,11 @@ export default function ProductDetails() {
   const inCart = quantityOf(product.id);
   const remaining = MAX_QUANTITY_PER_ITEM - inCart;
   const categoryPath = `/browse?category=${encodeURIComponent(product.category)}`;
+  const selectedQty = Math.min(quantity, Math.max(remaining, 1));
+  const qtyItems = Array.from({ length: Math.max(remaining, 1) }, (_, index) => {
+    const n = index + 1;
+    return { label: String(n), value: String(n) };
+  });
 
   function handleAddToCart() {
     addToCart(product.id, quantity);
@@ -118,170 +110,156 @@ export default function ProductDetails() {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: { xs: 2.5, md: 5 } }}>
-      <Button
-        component={RouterLink}
+    <PageContainer className="py-5 md:py-10">
+      <RouterLink
         to={categoryPath}
-        startIcon={<ArrowBackIcon />}
-        size="small"
-        color="inherit"
-        sx={{ ml: -1, mb: 2, color: "text.secondary" }}
+        className={cn(
+          buttonVariants({ variant: "ghost", size: "sm" }),
+          "-ml-2 mb-4 text-muted-foreground"
+        )}
       >
+        <ArrowLeft data-icon="inline-start" />
         All {product.category}
-      </Button>
+      </RouterLink>
 
-      <Box
-        sx={{
-          display: "grid",
-          gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
-          gap: { xs: 3, md: 6 },
-          alignItems: "start",
-        }}
-      >
-        <Paper
-          variant="outlined"
-          sx={{ overflow: "hidden", position: { md: "sticky" }, top: 88 }}
-        >
+      <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-2 md:gap-12">
+        <div className="overflow-hidden rounded-[var(--radius)] border border-border bg-card md:sticky md:top-[88px]">
           <ProductImage product={product} height={{ xs: 260, sm: 360, md: 420 }} />
-        </Paper>
+        </div>
 
-        <Box>
-          <Link
-            component={RouterLink}
+        <div>
+          <RouterLink
             to={categoryPath}
-            variant="subtitle2"
-            color="text.secondary"
+            className="text-xs font-semibold tracking-wide text-muted-foreground uppercase no-underline hover:underline"
           >
             {product.category}
-          </Link>
+          </RouterLink>
 
-          <Typography variant="h1" sx={{ mt: 0.5 }}>
+          <h1 className="mt-1 text-3xl font-semibold tracking-tight md:text-4xl">
             {product.name}
-          </Typography>
+          </h1>
 
-          <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", flexWrap: "wrap", mt: 1.5 }}>
-            <Typography variant="body2" color="text.secondary" sx={{ fontFamily: MONO }}>
-              {sku}
-            </Typography>
-            <Chip label="In stock" color="success" size="small" variant="outlined" />
-          </Stack>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <span className="font-mono text-sm text-muted-foreground">{sku}</span>
+            <Badge
+              variant="outline"
+              className="border-success text-success"
+            >
+              In stock
+            </Badge>
+          </div>
 
-          <Typography variant="h2" sx={{ mt: 2.5, fontFamily: MONO }}>
+          <p className="mt-5 font-mono text-2xl font-semibold tracking-tight sm:text-[1.5rem] md:text-[1.75rem]">
             {formatPrice(product.price)}
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
+          </p>
+          <p className="text-xs text-muted-foreground">
             {product.price >= FREE_SHIPPING_THRESHOLD
               ? "Qualifies for free delivery"
               : `Free delivery on orders over ${formatPriceShort(FREE_SHIPPING_THRESHOLD)}`}
-          </Typography>
+          </p>
 
           {highlights.length > 0 && (
-            <Stack spacing={1} sx={{ mt: 3 }}>
-              <Typography variant="subtitle2" color="text.secondary">
+            <div className="mt-6 space-y-2">
+              <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                 Key features
-              </Typography>
-              {highlights.map((highlight) => (
-                <Stack key={highlight} direction="row" spacing={1.25} sx={{ alignItems: "flex-start" }}>
-                  <CheckCircleOutlineIcon
-                    fontSize="small"
-                    color="secondary"
-                    sx={{ mt: 0.25, flexShrink: 0 }}
-                  />
-                  <Typography variant="body2">{highlight}</Typography>
-                </Stack>
-              ))}
-            </Stack>
+              </p>
+              <ul className="space-y-2">
+                {highlights.map((highlight) => (
+                  <li key={highlight} className="flex items-start gap-2.5">
+                    <CheckCircle
+                      className="mt-0.5 size-4 shrink-0 text-secondary"
+                      aria-hidden
+                    />
+                    <span className="text-sm">{highlight}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
 
-          <Stack
-            direction={{ xs: "column", sm: "row" }}
-            spacing={1.5}
-            sx={{ alignItems: { sm: "flex-start" }, mt: 3 }}
-          >
-            <TextField
-              select
-              label="Qty"
-              size="small"
-              value={Math.min(quantity, Math.max(remaining, 1))}
-              onChange={(event) => setQuantity(Number(event.target.value))}
-              disabled={remaining <= 0}
-              sx={{ width: { xs: "100%", sm: 96 }, flexShrink: 0 }}
-            >
-              {Array.from({ length: Math.max(remaining, 1) }, (_, index) => index + 1).map((n) => (
-                <MenuItem key={n} value={n}>
-                  {n}
-                </MenuItem>
-              ))}
-            </TextField>
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-start">
+            <div className="w-full shrink-0 sm:w-24">
+              <Label htmlFor="product-qty" className="mb-1.5">
+                Qty
+              </Label>
+              <Select
+                items={qtyItems}
+                value={String(selectedQty)}
+                onValueChange={(value) => setQuantity(Number(value))}
+                disabled={remaining <= 0}
+              >
+                <SelectTrigger id="product-qty" className="h-10 w-full sm:h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent alignItemWithTrigger={false}>
+                  <SelectGroup>
+                    {qtyItems.map((item) => (
+                      <SelectItem key={item.value} value={item.value}>
+                        {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
             <Button
-              variant="contained"
-              color="secondary"
-              size="large"
-              startIcon={<AddShoppingCartIcon />}
+              variant="secondary"
+              size="lg"
               onClick={handleAddToCart}
               disabled={remaining <= 0}
-              sx={{ flexGrow: 1, width: { xs: "100%", sm: "auto" } }}
+              className="w-full flex-grow sm:mt-6 sm:w-auto"
             >
+              <ShoppingCart data-icon="inline-start" />
               {remaining <= 0 ? "Maximum quantity in cart" : "Add to cart"}
             </Button>
-          </Stack>
+          </div>
 
-          <Collapse in={added && remaining > 0}>
-            <Alert
-              severity="success"
-              sx={{ mt: 2 }}
-              action={
-                <Button component={RouterLink} to="/cart" size="small" color="inherit">
-                  View cart
-                </Button>
-              }
+          {added && remaining > 0 && (
+            <div
+              role="status"
+              className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius)] border border-success/30 bg-success/10 px-3 py-2.5 text-sm text-success motion-safe:animate-content-enter"
             >
-              Added to your cart.
-            </Alert>
-          </Collapse>
+              <span>Added to your cart.</span>
+              <RouterLink
+                to="/cart"
+                className={cn(
+                  buttonVariants({ variant: "ghost", size: "sm" }),
+                  "text-success hover:bg-success/15 hover:text-success"
+                )}
+              >
+                View cart
+              </RouterLink>
+            </div>
+          )}
 
-          <Paper variant="outlined" sx={{ p: 2, mt: 3 }}>
-            <Stack spacing={1.75}>
-              <ServiceRow
-                icon={LocalShippingOutlinedIcon}
-                title="Delivery"
-                body={POLICIES.shipping}
-              />
-              <ServiceRow
-                icon={AssignmentReturnOutlinedIcon}
-                title="Returns"
-                body={POLICIES.returns}
-              />
-              <ServiceRow
-                icon={VerifiedUserOutlinedIcon}
-                title="Warranty"
-                body={POLICIES.warranty}
-              />
-            </Stack>
-          </Paper>
+          <div className="mt-6 space-y-3.5 rounded-[var(--radius)] border border-border bg-card p-4">
+            <ServiceRow icon={Truck} title="Delivery" body={POLICIES.shipping} />
+            <ServiceRow icon={Package} title="Returns" body={POLICIES.returns} />
+            <ServiceRow icon={ShieldCheck} title="Warranty" body={POLICIES.warranty} />
+          </div>
 
-          <Divider sx={{ my: 3 }} />
+          <Separator className="my-6" />
 
-          <Typography variant="h3" gutterBottom>
+          <h2 className="mb-2 text-xl font-semibold tracking-tight sm:text-[1.375rem]">
             Specifications
-          </Typography>
-          <Stack divider={<Divider flexItem />}>
+          </h2>
+          <dl className="divide-y divide-border">
             {brand && <SpecRow label="Brand" value={brand} />}
             <SpecRow label="Category" value={product.category} />
             <SpecRow label="Stock code" value={sku} />
             <SpecRow label="Availability" value="In stock" />
             <SpecRow label="Warranty" value={POLICIES.warranty} />
             <SpecRow label="Delivery" value={POLICIES.shipping} />
-          </Stack>
-        </Box>
-      </Box>
+          </dl>
+        </div>
+      </div>
 
       {related.length > 0 && (
-        <Box sx={{ mt: { xs: 5, md: 9 } }}>
+        <div className="mt-10 md:mt-16">
           <SectionHeader title={`More in ${product.category}`} />
           <ProductGrid products={related} columns={4} />
-        </Box>
+        </div>
       )}
-    </Container>
+    </PageContainer>
   );
 }
