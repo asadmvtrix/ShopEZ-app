@@ -730,3 +730,80 @@ Phase 6 did **not** commit.
 6. GoogleGlyph brand hex fills are intentional; do not force them onto CSS tokens in Phase 7.
 
 ---
+
+## Phase 7 — Remove MUI (2026-09-20)
+
+### What Phase 7 required
+1. `git grep -l "@mui" -- src` and `git grep -l "@emotion" -- src` return nothing.
+2. Remove StyledEngineProvider/GlobalStyles, ThemeProvider, CssBaseline; delete `src/theme/index.js` (keep `motion.js`); reduce ColorModeProvider to `.dark` + persistence; remove `mui` from CSS layer order.
+3. `npm uninstall @mui/material @mui/icons-material @emotion/react @emotion/styled`.
+4. Build, lint, compare bundle sizes to Phase 0 baseline.
+
+### Files changed (Phase 7 only)
+| Path | Change |
+|---|---|
+| `src/hooks/useMediaQuery.js` | **new** — `matchMedia` subscription helper (replaces MUI `useMediaQuery`) |
+| `src/context/ColorModeProvider.jsx` | dropped ThemeProvider / CssBaseline / `createAppTheme`; hook API unchanged |
+| `src/main.jsx` | dropped StyledEngineProvider + GlobalStyles |
+| `src/theme/index.js` | **deleted** |
+| `src/index.css` | layer order without `mui`; `#root` / html / body / img base parity (former CssBaseline layout bits) |
+| `package.json` / `package-lock.json` | uninstalled `@mui/*` + `@emotion/*` (−45 packages) |
+| `MIGRATION_LOG.md` | this Phase 7 section |
+
+`src/theme/motion.js` **kept** (ANIMATE / DURATION / `usePrefersReducedMotion` still used by shell/catalog).
+
+### Deviations / decisions
+1. **CssBaseline → base layer** — preserved `#root` flex column + min-height, html/body height/overflow, and `img` block/max-width so footer/`flex-grow` main layout stays intact. Did not port scrollbar styling or global reduced-motion CSS (Tailwind `motion-safe` / Preflight already cover app motion).
+2. **`useMediaQuery` hook** — small shared helper under `src/hooks/` (same pattern as `usePrefersReducedMotion` in motion.js) rather than inlining in ColorModeProvider.
+3. **Lint** — still **30** baseline errors; no new Phase 7 categories. ColorModeProvider still trips `react-refresh/only-export-components` (pre-existing pattern).
+4. Did **not** commit (phase does not require it). Did not start Phase 8 polish.
+
+### Verification
+| Check | Result |
+|---|---|
+| `npm run build` | **PASS** — vite 8.3.0, 2322 modules, **no MUI chunk** |
+| `npm run lint` | **FAIL** — 30 errors (unchanged vs Phase 3–6 baseline) |
+| `git grep -l "@mui" -- src` | **empty** |
+| `git grep -l "@emotion" -- src` | **empty** |
+| `package.json` `@mui` / `@emotion` | **removed** |
+
+#### Bundle sizes after Phase 7 (raw + gzip level 9)
+
+| Asset class | Raw | Gzip (level 9) | vs Phase 0 | vs Phase 6 |
+|---|---:|---:|---:|---:|
+| All JS | 858.24 kB (878,838 B) | 273.70 kB (280,265 B) | **−71.1 kB / −7.9 kB** | **−93.0 kB / −32.3 kB** |
+| All CSS | 92.60 kB (94,823 B) | 15.32 kB (15,685 B) | **+82.7 kB / +14.1 kB** | ~flat |
+| **JS + CSS** | **950.84 kB** | **289.01 kB** | **+11.7 kB / +6.3 kB** | **−93.4 kB / −32.4 kB** |
+
+Notes:
+- Phase 0 MUI-only chunk (~372 kB / ~114 kB gzip) is **gone**.
+- Net JS+CSS is slightly **above** Phase 0 because Tailwind/shadcn CSS (~93 kB) and Base UI / lucide replace a portion of the MUI savings; JS alone is clearly smaller.
+- Largest remaining JS chunks: `react` (~248 kB), `createLucideIcon` (~215 kB), app `index` (~119 kB). Lucide tree-shaking is a Phase 8 opportunity.
+
+### Manual test checklist (375px & 1280px, light & dark)
+- [ ] Hard refresh: no FOUC; `<html class="dark">` matches preference / system
+- [ ] Navbar + Account theme toggle (system/light/dark) still works without MUI ThemeProvider
+- [ ] Layout: sticky header, `main` grows, footer at bottom on short pages
+- [ ] Smoke: Home / Browse / Product / Cart / Auth / Account / Checkout shell render
+- [ ] No `@mui` / Emotion runtime errors in console
+- [ ] Stripe checkout redirect path still wired (do not complete paid charge)
+
+### Suggested commit message (when you choose to commit)
+
+```
+chore: remove MUI and Emotion (Phase 7)
+
+Drop theme bridge providers, delete createTheme, and uninstall @mui/*
++ @emotion/*; color mode keeps dark class + storage API only.
+```
+
+Phase 7 did **not** commit.
+
+### Blockers / notes for Phase 8
+1. Phase 8 is **polish + production review (report-only)** per `UI_MIGRATION.md` — do not start until requested.
+2. Lint still red (30 baseline) — decide cleanup vs document-as-known.
+3. Bundle: CSS larger than Phase 0; consider lucide import hygiene / unused utility purge review in Phase 8.
+4. Dirty WIP / commit strategy still open across Phases 0–7.
+5. Visual parity spot-check after CssBaseline removal (scrollbars, reduced-motion OS setting).
+
+---
