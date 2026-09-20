@@ -20,11 +20,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import PageContainer from "../components/PageContainer";
 import ProductImage from "../components/ProductImage";
 import ProductGrid from "../components/ProductGrid";
 import SectionHeader from "../components/SectionHeader";
+import { ProductGridSkeleton } from "../components/Skeletons";
 import { useCart } from "../context/CartProvider";
 import { useCatalog } from "../context/CatalogProvider";
 import { setFlash } from "../lib/flash";
@@ -85,7 +87,25 @@ export default function ProductDetails() {
   }, [product, products]);
 
   if (loading) {
-    return null;
+    return (
+      <PageContainer className="py-6 md:py-10" aria-busy="true" aria-label="Loading product">
+        <Skeleton className="mb-4 h-8 w-40" />
+        <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-2 md:gap-12">
+          <Skeleton className="aspect-[4/3] w-full rounded-[var(--radius)]" />
+          <div className="space-y-4">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-10 w-[85%]" />
+            <Skeleton className="h-8 w-32" />
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-11 w-full sm:w-48" />
+          </div>
+        </div>
+        <div className="mt-10 md:mt-16">
+          <Skeleton className="mb-4 h-8 w-48" />
+          <ProductGridSkeleton count={4} columns={4} />
+        </div>
+      </PageContainer>
+    );
   }
 
   if (!product) {
@@ -110,7 +130,7 @@ export default function ProductDetails() {
   }
 
   return (
-    <PageContainer className="py-5 md:py-10">
+    <PageContainer className="py-6 md:py-10">
       <RouterLink
         to={categoryPath}
         className={cn(
@@ -124,7 +144,7 @@ export default function ProductDetails() {
 
       <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-2 md:gap-12">
         <div className="overflow-hidden rounded-[var(--radius)] border border-border bg-card md:sticky md:top-[88px]">
-          <ProductImage product={product} height={{ xs: 260, sm: 360, md: 420 }} />
+          <ProductImage product={product} height={null} className="aspect-[4/3] w-full" />
         </div>
 
         <div>

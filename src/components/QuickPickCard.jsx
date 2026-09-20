@@ -27,10 +27,10 @@ export default function QuickPickCard({ product }) {
   }
 
   return (
-    <div className="flex items-center gap-3 rounded-[var(--radius)] border border-border bg-card p-3">
+    <div className="flex items-center gap-3 rounded-[var(--radius)] border border-border bg-card p-3 transition-colors hover:border-primary/50">
       <RouterLink
         to={`/products/${product.id}`}
-        className="shrink-0 overflow-hidden rounded-[var(--radius)] border border-border"
+        className="shrink-0 overflow-hidden rounded-[var(--radius)] border border-border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
       >
         <ProductImage
           product={product}

@@ -16,7 +16,8 @@ export default function CategoryTiles() {
           to={`/browse?category=${encodeURIComponent(summary.category)}`}
           className={cn(
             "group flex items-center gap-3 rounded-[var(--radius)] border border-border bg-card p-3 text-inherit no-underline",
-            "transition-colors hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            "transition-colors hover:border-primary/50 hover:bg-muted/20",
+            "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           )}
         >
           <ProductImage

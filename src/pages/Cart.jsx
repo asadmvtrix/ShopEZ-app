@@ -49,13 +49,18 @@ export default function Cart() {
             {items.map((item) => (
               <li
                 key={item.id}
-                className="grid grid-cols-[88px_1fr] items-center gap-4 rounded-[var(--radius)] border border-border bg-card p-4 sm:grid-cols-[112px_1fr_auto]"
+                className="grid grid-cols-[88px_1fr] items-center gap-4 rounded-[var(--radius)] border border-border bg-card p-4 transition-colors hover:border-primary/40 sm:grid-cols-[112px_1fr_auto]"
               >
                 <RouterLink
                   to={`/products/${item.id}`}
-                  className="overflow-hidden rounded-[var(--radius)] border border-border"
+                  className="overflow-hidden rounded-[var(--radius)] border border-border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                 >
-                  <ProductImage product={item.product} height={88} />
+                  <ProductImage
+                    product={item.product}
+                    height={null}
+                    className="aspect-square w-full"
+                    imagePadding={0.75}
+                  />
                 </RouterLink>
 
                 <div className="min-w-0">

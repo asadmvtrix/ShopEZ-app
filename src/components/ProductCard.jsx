@@ -8,7 +8,7 @@ import { useCart } from "../context/CartProvider";
 import { formatPrice, MAX_QUANTITY_PER_ITEM } from "../config/store";
 import { ANIMATE } from "../theme/motion";
 
-export default function ProductCard({ product, imageHeight = 190 }) {
+export default function ProductCard({ product }) {
   const { addToCart, quantityOf } = useCart();
   const quantity = quantityOf(product.id);
   const atLimit = quantity >= MAX_QUANTITY_PER_ITEM;
@@ -24,18 +24,18 @@ export default function ProductCard({ product, imageHeight = 190 }) {
     <div
       className={cn(
         "flex h-full flex-col overflow-hidden rounded-[var(--radius)] border border-border bg-card text-card-foreground",
-        "transition-[border-color,box-shadow,transform] duration-160",
-        "motion-safe:hover:-translate-y-0.5 motion-safe:hover:border-primary motion-safe:hover:shadow-md",
+        "transition-colors duration-160",
+        "hover:border-primary/50 hover:bg-muted/20",
         "[&_.product-card-image_img]:transition-transform [&_.product-card-image_img]:duration-160",
-        "motion-safe:hover:[&_.product-card-image_img]:scale-[1.04]"
+        "motion-safe:hover:[&_.product-card-image_img]:scale-[1.03]"
       )}
     >
       <RouterLink
         to={`/products/${product.id}`}
-        className="block rounded-[inherit] text-inherit no-underline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary"
+        className="block rounded-[inherit] text-inherit no-underline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring"
       >
-        <div className="product-card-image">
-          <ProductImage product={product} height={imageHeight} />
+        <div className="product-card-image border-b border-border">
+          <ProductImage product={product} height={null} className="aspect-[4/3] w-full" />
         </div>
         <div className="px-4 pt-3 pb-2">
           <p className="text-xs text-muted-foreground">{product.category}</p>
@@ -48,7 +48,9 @@ export default function ProductCard({ product, imageHeight = 190 }) {
       <div className="flex-grow" />
 
       <div className="px-4 pb-2">
-        <p className="font-mono text-lg font-semibold">{formatPrice(product.price)}</p>
+        <p className="font-mono text-lg font-semibold text-secondary">
+          {formatPrice(product.price)}
+        </p>
       </div>
 
       <div className="flex gap-2 px-4 pt-0 pb-4">

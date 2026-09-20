@@ -2,13 +2,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import PageContainer from "./PageContainer";
 
-export function ProductCardSkeleton({ imageHeight = 190 }) {
+export function ProductCardSkeleton() {
   return (
     <div
-      className="flex h-full flex-col overflow-hidden rounded-lg border border-border bg-card"
+      className="flex h-full flex-col overflow-hidden rounded-[var(--radius)] border border-border bg-card"
       aria-hidden
     >
-      <Skeleton className="w-full shrink-0 rounded-none" style={{ height: imageHeight }} />
+      <Skeleton className="aspect-[4/3] w-full shrink-0 rounded-none" />
       <div className="flex flex-grow flex-col gap-2 p-4">
         <Skeleton className="h-3.5 w-[40%]" />
         <Skeleton className="h-[18px] w-[92%]" />
@@ -21,18 +21,18 @@ export function ProductCardSkeleton({ imageHeight = 190 }) {
   );
 }
 
-export function ProductGridSkeleton({ count = 8, columns = 4, imageHeight = 190 }) {
+export function ProductGridSkeleton({ count = 8, columns = 4 }) {
   return (
     <div
       className={cn(
-        "grid grid-cols-1 gap-2.5 sm:grid-cols-2 md:grid-cols-3",
+        "grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3",
         columns >= 4 ? "lg:grid-cols-4" : "lg:grid-cols-3"
       )}
       aria-busy="true"
       aria-label="Loading products"
     >
       {Array.from({ length: count }, (_, index) => (
-        <ProductCardSkeleton key={index} imageHeight={imageHeight} />
+        <ProductCardSkeleton key={index} />
       ))}
     </div>
   );
@@ -57,13 +57,13 @@ export default function HomeSkeleton() {
       <PageContainer className="py-8 md:py-12">
         <Skeleton className="mb-1 h-8 w-[40%]" />
         <Skeleton className="mb-6 h-[18px] w-[55%]" />
-        <div className="mb-12 flex gap-2.5 overflow-hidden">
+        <div className="mb-12 flex gap-5 overflow-hidden">
           {Array.from({ length: 4 }, (_, index) => (
             <div
               key={index}
               className="w-[78%] shrink-0 sm:w-[44%] md:w-[26%]"
             >
-              <ProductCardSkeleton imageHeight={170} />
+              <ProductCardSkeleton />
             </div>
           ))}
         </div>

@@ -807,3 +807,128 @@ Phase 7 did **not** commit.
 5. Visual parity spot-check after CssBaseline removal (scrollbars, reduced-motion OS setting).
 
 ---
+
+## Phase 8 — Polish + production review (2026-09-20)
+
+### What Phase 8 required
+1. **Polish:** consistent spacing/type scale, focus/hover, loading/empty/error on every page, one primary CTA per view, consistent image ratios; retail look (flat surfaces, crisp 1px borders, subtle accent border on hover; no glow / heavy shadows).
+2. **Production review (REPORT ONLY):** Lighthouse, bundle/lazy-load, title/meta/OG, 404, Supabase RLS, Stripe webhook + server prices, secrets in client bundle, failed-network states — change nothing without approval.
+
+### Polish applied (UI only)
+| Path | Change |
+|---|---|
+| `src/components/ProductCard.jsx` | Flat retail hover (`border-primary/50`, no shadow/lift); price uses `text-secondary`; cards use shared `aspect-[4/3]` media |
+| `src/components/ProductImage.jsx` | `height={null}` skips fixed height so aspect-ratio layouts work |
+| `src/components/Skeletons.jsx` | Card skeletons match `aspect-[4/3]` + shared radius/gap |
+| `src/components/CategoryTiles.jsx` | Hover border + ring focus alignment |
+| `src/components/QuickPickCard.jsx` | Hover border + focus ring on thumb link |
+| `src/components/SectionHeader.jsx` | Tighter type scale (`text-xl` → `sm:text-2xl`); spacing `mb-4` |
+| `src/components/StorefrontMasthead.jsx` | Radius token; hero image `aspect-[4/3]` |
+| `src/pages/Home.jsx` | Catalog error / seed-fallback warning + retry; unified card ratios |
+| `src/pages/Browse.jsx` | **Loading before empty** (fixes empty flash while catalog loads); hard error + retry |
+| `src/pages/ProductDetails.jsx` | Loading skeleton (was `null`); `py-6`; gallery `aspect-[4/3]` |
+| `src/pages/Cart.jsx` | Line hover border; square thumb aspect |
+| `src/pages/NotFound.jsx` | Page title scale aligned with other h1s; primary + outline CTAs |
+| `src/pages/Account.jsx` | Orders error retry button |
+| `MIGRATION_LOG.md` | this Phase 8 section |
+
+Business logic, routes, services, Stripe/Supabase calls: **unchanged**.
+
+### Deviations / decisions
+1. **Overlay shadows** (`Sheet` / `DropdownMenu` / `Select`) left as shadcn defaults — needed for layering; product surfaces are flat.
+2. **Catalog errors** often still ship seed products (`fetchCatalog` fallback) — soft warning when `error` is set with products; hard empty only if product list is empty.
+3. **Add-to-cart** stays `variant="secondary"` (orange retail accent); navy `primary` reserved for checkout / main nav CTAs — one primary action per view preserved.
+4. **Lighthouse** not executed in this session (no deployed URL / interactive browser audit). Findings below are static review; run Lighthouse on preview/prod when ready.
+5. **Production review items** are report-only — **no security/meta/bundle code changes** without approval.
+6. Lint still **30** baseline errors; did **not** commit.
+
+### Verification
+| Check | Result |
+|---|---|
+| `npm run build` | **PASS** — vite 8.3.0 |
+| `npm run lint` | **FAIL** — 30 errors (unchanged baseline) |
+| `@mui` / `@emotion` under `src` | still **none** (Phase 7) |
+
+#### Bundle sizes after Phase 8 (raw + gzip level 9)
+
+| Asset class | Raw | Gzip (level 9) | vs Phase 7 | vs Phase 0 |
+|---|---:|---:|---:|---:|
+| All JS | 860.29 kB (880,932 B) | 273.96 kB (280,536 B) | ~+2 kB raw | **−69.0 kB / −7.6 kB** |
+| All CSS | 92.57 kB (94,788 B) | 15.36 kB (15,729 B) | ~flat | **+82.7 kB / +14.2 kB** |
+| **JS + CSS** | **952.85 kB** | **289.32 kB** | ~flat | **+13.7 kB / +6.6 kB** |
+
+Largest JS chunks: `react` (~254 kB), `createLucideIcon` (~220 kB), app `index` (~121 kB). Route splits still present (Browse/Auth/Account/Cart/Checkout/…).
+
+### Production review (REPORT ONLY — no code changes)
+
+#### 1. Lighthouse (perf / a11y / SEO)
+- **Not run live** this session. Recommended: `npm run preview` + Chrome Lighthouse on `/`, `/browse`, `/products/:id`, `/auth` at 375px & desktop, light + dark.
+- Expected wins vs Phase 0 MUI: smaller JS, no Emotion runtime. Risks: large lucide chunk (~220 kB), Unsplash/third-party images without `srcset`, single static `<title>` / description (SEO score).
+
+#### 2. Bundle analysis & lazy-loading
+- Route-level `lazy()` already covers Browse, ProductDetails, Cart, Checkout, CheckoutSuccess, Auth, Account, NotFound.
+- **Opportunity (needs approval):** tree-shake lucide — many icons pull a large shared chunk; consider per-icon imports audit or fewer icons.
+- **Opportunity:** CSS (~93 kB) is Tailwind; mostly expected; further purge only if unused utilities remain after polish.
+- Home stays eager (intentional for LCP).
+
+#### 3. Title / meta / OG per route
+- `index.html` has one global `<title>` and `<meta name="description">`.
+- **No** per-route `document.title`, **no** Open Graph / Twitter cards.
+- **Recommendation (approval):** small `usePageMeta({ title, description })` hook on each page, plus `og:title` / `og:description` / `og:image` defaults in `index.html`.
+
+#### 4. 404 handling
+- Catch-all `path="*"` → `NotFound` with home + browse CTAs. Product miss redirects to `/browse` + flash. Adequate for SPA; server must still serve `index.html` for unknown paths (Vercel rewrite already noted in prior commits).
+
+#### 5. Supabase RLS assumptions
+From `supabase/setup.sql`:
+- `products`: RLS on; **public SELECT** for anon + authenticated.
+- `orders` / `order_items`: RLS on; users **SELECT + INSERT** own rows only; **no UPDATE/DELETE** for clients (webhook uses service role — good).
+- `delete_own_account()` is `SECURITY DEFINER` — intended for account deletion.
+- **Risk:** client still has INSERT on orders/items; unused `createOrder` in `services/orders.js` could let a signed-in user insert arbitrary totals if called. Checkout path uses server admin client instead.
+- **Recommendation (approval):** revoke client INSERT on orders/order_items if all writes go through `/api/create-checkout-session` + webhook; or drop unused `createOrder`.
+
+#### 6. Stripe webhook & prices
+- **Webhook (`api/stripe-webhook.js`):** verifies signature via `constructEvent` + `STRIPE_WEBHOOK_SECRET`; raw body required — **good**.
+- **Checkout (`api/create-checkout-session.js`):** recalculates shipping/tax server-side from line subtotal — **good**.
+- **Gap (needs approval):** `normalizeItems` trusts **client-sent `unit_price` / name** — does **not** re-fetch prices from `products`. A modified client can underpay.
+- **Recommendation:** resolve `product_id` → DB price (service role) before creating Stripe line items and order rows.
+
+#### 7. Secrets in client bundle
+- Grep of `dist/assets/*.js`: no `STRIPE_SECRET`, `SERVICE_ROLE`, `sk_live`/`sk_test`, `whsec_`.
+- Client only references `VITE_SUPABASE_*`, `VITE_STRIPE_PUBLISHABLE_KEY` (expected). Server secrets stay in `process.env` on API routes.
+
+#### 8. Failed-network states
+- Catalog: seed fallback + Phase 8 error/retry UI.
+- Auth/Account/Checkout/CheckoutSuccess: existing alerts + `toUserMessage` network copy.
+- Orders panel: loading / error+retry / empty.
+- Stripe start/confirm: error returns via `services/stripe.js`.
+- Global: `ErrorBoundary` for render failures; sonner toasts for flash errors.
+
+### Manual test checklist (375px & 1280px, light & dark)
+- [ ] Product cards: flat hover border (no shadow lift); 4:3 images align in grids/scroller
+- [ ] Browse: skeleton while loading (not “Nothing matches”); empty only after load
+- [ ] Home/Browse: catalog error banner + Try again / Refresh when applicable
+- [ ] Product details: skeleton then content; gallery aspect matches cards
+- [ ] Cart line hover + qty targets; NotFound title/CTAs
+- [ ] Account orders: failed load shows Try again
+- [ ] Smoke: Auth, Checkout redirect wiring, theme toggle, reduced-motion
+
+### Suggested commit message (when you choose to commit)
+
+```
+chore: polish storefront UI and record production review (Phase 8)
+
+Align retail surfaces, image ratios, and loading/error states; document
+Lighthouse/security/meta follow-ups without changing server behavior.
+```
+
+Phase 8 did **not** commit.
+
+### Migration complete?
+**Yes — per `UI_MIGRATION.md`, Phases 0–8 are the full migration.** There is no Phase 9 in the doc.
+
+Open follow-ups (outside migration phases; need your decision):
+1. Fix or formally waive the 30 baseline lint errors.
+2. Approve production fixes: server-side product price lookup; optional revoke of client order INSERT; per-route meta/OG; lucide bundle trim.
+3. Run Lighthouse on preview/production and track scores.
+4. Commit strategy for Phases 0–8 on `ui-migration` (separate agent may already be stacking early phases).

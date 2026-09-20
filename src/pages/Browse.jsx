@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Filter, Search, X } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -89,7 +90,13 @@ function ColumnToggle({ value, onChange, className }) {
 }
 
 export default function Browse() {
-  const { products: allProducts, categories, loading: catalogLoading } = useCatalog();
+  const {
+    products: allProducts,
+    categories,
+    loading: catalogLoading,
+    error: catalogError,
+    refresh,
+  } = useCatalog();
   const [searchParams, setSearchParams] = useSearchParams();
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [columns, setColumns] = useState(3);
@@ -361,16 +368,27 @@ export default function Browse() {
             </div>
           </div>
 
-          {results.length === 0 ? (
+          {!ready || catalogLoading ? (
+            <ProductGridSkeleton count={9} columns={columns} />
+          ) : catalogError && allProducts.length === 0 ? (
+            <Alert variant="destructive">
+              <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <span>{catalogError}</span>
+                <Button variant="outline" size="sm" onClick={() => void refresh()}>
+                  Try again
+                </Button>
+              </AlertDescription>
+            </Alert>
+          ) : results.length === 0 ? (
             <div className="rounded-[var(--radius)] border border-border bg-card p-12 text-center">
-              <h2 className="mb-2 text-xl font-semibold">Nothing matches those filters</h2>
+              <h2 className="mb-2 text-xl font-semibold tracking-tight sm:text-2xl">
+                Nothing matches those filters
+              </h2>
               <p className="mb-5 text-sm text-muted-foreground">
                 Try widening the price range or clearing the search term.
               </p>
               <Button onClick={resetFilters}>Clear filters</Button>
             </div>
-          ) : !ready || catalogLoading ? (
-            <ProductGridSkeleton count={9} columns={columns} />
           ) : (
             <div
               className={cn(

@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import CategoryTiles from "../components/CategoryTiles";
@@ -52,7 +53,7 @@ function ColumnToggle({ value, onChange, className }) {
 }
 
 export default function Home() {
-  const { products, categories, getProductById, loading } = useCatalog();
+  const { products, categories, getProductById, loading, error, refresh } = useCatalog();
   const scrollerRef = useRef(null);
   const [columns, setColumns] = useState(4);
   const [fromAuth] = useState(() => consumeAppEnter());
@@ -88,12 +89,38 @@ export default function Home() {
     return <HomeSkeleton />;
   }
 
+  if (error && products.length === 0) {
+    return (
+      <PageContainer className="py-10 md:py-16">
+        <Alert variant="destructive">
+          <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <span>{error}</span>
+            <Button variant="outline" size="sm" onClick={() => void refresh()}>
+              Try again
+            </Button>
+          </AlertDescription>
+        </Alert>
+      </PageContainer>
+    );
+  }
+
   return (
     <>
       <StorefrontMasthead spotlight={spotlight} quickPicks={quickPicks} />
 
       <PageContainer className="py-8 md:py-12">
         <div className="flex flex-col gap-10 md:gap-14">
+          {error ? (
+            <Alert className="border-warning/40 text-foreground">
+              <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <span>{error}</span>
+                <Button variant="outline" size="sm" onClick={() => void refresh()}>
+                  Refresh catalogue
+                </Button>
+              </AlertDescription>
+            </Alert>
+          ) : null}
+
           <section>
             <SectionHeader
               title="Popular right now"
@@ -129,7 +156,7 @@ export default function Home() {
               )}
             >
               {popular.map((product) => (
-                <ProductCard key={product.id} product={product} imageHeight={170} />
+                <ProductCard key={product.id} product={product} />
               ))}
             </div>
           </section>
@@ -156,10 +183,10 @@ export default function Home() {
 
           <div className="flex flex-col items-stretch justify-between gap-4 rounded-[var(--radius)] border border-border bg-card p-5 sm:flex-row sm:items-center md:p-8">
             <div>
-              <h2 className="text-xl font-semibold tracking-tight md:text-2xl">
+              <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
                 Browse the full catalogue
               </h2>
-              <p className="mt-0.5 text-sm text-muted-foreground">
+              <p className="mt-1 text-sm text-muted-foreground">
                 {products.length} products across {categories.length} categories, filterable by
                 price and category.
               </p>

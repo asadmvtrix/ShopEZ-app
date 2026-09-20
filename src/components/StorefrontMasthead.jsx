@@ -64,7 +64,7 @@ export default function StorefrontMasthead({ spotlight, quickPicks }) {
       <ServiceStrip />
 
       <PageContainer className="pt-2.5 md:pt-4">
-        <div className="relative rounded-xl border border-border bg-card px-2.5 pt-3.5 pb-5 sm:px-12 sm:pt-5 sm:pb-6 md:px-16 md:pt-5 md:pb-6">
+          <div className="relative rounded-[var(--radius)] border border-border bg-card px-2.5 pt-3.5 pb-5 sm:px-12 sm:pt-5 sm:pb-6 md:px-16 md:pt-5 md:pb-6">
           <div
             key={active.id}
             className={cn(
@@ -97,8 +97,8 @@ export default function StorefrontMasthead({ spotlight, quickPicks }) {
 
             <ProductImage
               product={active}
-              height={{ xs: 168, sm: 250, md: 290 }}
-              className="rounded-lg"
+              height={null}
+              className="aspect-[4/3] w-full rounded-[var(--radius)]"
             />
           </div>
 
