@@ -1,41 +1,46 @@
 import { useState } from "react";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
-import AppBar from "@mui/material/AppBar";
-import Avatar from "@mui/material/Avatar";
-import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import Container from "@mui/material/Container";
-import Divider from "@mui/material/Divider";
-import Drawer from "@mui/material/Drawer";
-import IconButton from "@mui/material/IconButton";
-import List from "@mui/material/List";
-import ListItemButton from "@mui/material/ListItemButton";
-import ListItemText from "@mui/material/ListItemText";
-import ListSubheader from "@mui/material/ListSubheader";
-import Menu from "@mui/material/Menu";
-import MenuItem from "@mui/material/MenuItem";
-import Stack from "@mui/material/Stack";
-import Toolbar from "@mui/material/Toolbar";
-import Tooltip from "@mui/material/Tooltip";
-import Typography from "@mui/material/Typography";
-import CloseIcon from "@mui/icons-material/Close";
-import DarkModeOutlinedIcon from "@mui/icons-material/DarkModeOutlined";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import LightModeOutlinedIcon from "@mui/icons-material/LightModeOutlined";
-import MenuIcon from "@mui/icons-material/Menu";
-import PersonOutlinedIcon from "@mui/icons-material/PersonOutlined";
-import ShoppingCartOutlinedIcon from "@mui/icons-material/ShoppingCartOutlined";
+import {
+  ChevronDown,
+  Menu as MenuIcon,
+  Moon,
+  Sun,
+  ShoppingCart,
+  User,
+  X,
+} from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Separator } from "@/components/ui/separator";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { cn } from "@/lib/utils";
 import BrandMark from "./BrandMark";
 import CartBadge from "./CartBadge";
-import { useAuth } from "../context/auth-context";
+import PageContainer from "./PageContainer";
+import { useAuth } from "../context/AuthProvider";
 import { setFlash } from "../lib/flash";
-import { useCart } from "../context/cart-context";
-import { useCatalog } from "../context/catalog-context";
-import { useColorMode } from "../context/color-mode-context";
+import { useCart } from "../context/CartProvider";
+import { useCatalog } from "../context/CatalogProvider";
+import { useColorMode } from "../context/ColorModeProvider";
 
 function categoryPath(category) {
   return `/browse?category=${encodeURIComponent(category)}`;
 }
+
+const iconBtn =
+  "size-10 shrink-0 [&_svg:not([class*='size-'])]:size-5 sm:[&_svg:not([class*='size-'])]:size-6";
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -45,21 +50,17 @@ export default function Navbar() {
   const navigate = useNavigate();
 
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [categoryAnchor, setCategoryAnchor] = useState(null);
-  const [accountAnchor, setAccountAnchor] = useState(null);
 
   const closeDrawer = () => setDrawerOpen(false);
 
   function handleLogout() {
     void logout()
       .then(() => {
-        setAccountAnchor(null);
         closeDrawer();
         setFlash("Signed out successfully.");
         navigate("/");
       })
       .catch(() => {
-        setAccountAnchor(null);
         closeDrawer();
         setFlash("Couldn’t sign out cleanly. Try again.", "error");
         navigate("/");
@@ -67,245 +68,256 @@ export default function Navbar() {
   }
 
   return (
-    <AppBar position="sticky">
-      <Container maxWidth="lg" disableGutters>
-        <Toolbar
-          sx={{
-            gap: { xs: 0.25, sm: 1 },
-            px: { xs: 1, sm: 3 },
-            "& .MuiIconButton-root": { p: { xs: 0.75, sm: 1 } },
-            "& .MuiIconButton-root .MuiSvgIcon-root": { fontSize: { xs: 20, sm: 24 } },
-          }}
-        >
-          <IconButton
-            edge="start"
+    <header className="sticky top-0 z-40 border-b border-border bg-card">
+      <PageContainer className="px-2 sm:px-6 lg:px-8">
+        <div className="flex h-14 items-center gap-0.5 sm:h-16 sm:gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(iconBtn, "md:hidden")}
             onClick={() => setDrawerOpen(true)}
             aria-label="Open navigation menu"
-            sx={{ display: { md: "none" } }}
           >
             <MenuIcon />
-          </IconButton>
+          </Button>
 
-          <Box
-            component={RouterLink}
+          <RouterLink
             to="/"
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 1,
-              color: "primary.main",
-              textDecoration: "none",
-              mr: { xs: 0.5, md: 2 },
-            }}
+            className="mr-1 flex items-center gap-2 text-primary no-underline md:mr-4"
           >
-            <BrandMark sx={{ fontSize: { xs: 26, sm: 30 } }} />
-            <Typography variant="h5" component="span" sx={{ letterSpacing: "-0.02em" }}>
+            <BrandMark className="size-[26px] sm:size-[30px]" />
+            <span className="text-base font-semibold tracking-tight sm:text-lg">
               ShopEZ
-            </Typography>
-          </Box>
+            </span>
+          </RouterLink>
 
-          <Stack direction="row" spacing={0.5} sx={{ display: { xs: "none", md: "flex" } }}>
-            <Button component={RouterLink} to="/" color="inherit">
+          <nav className="hidden items-center gap-0.5 md:flex" aria-label="Main">
+            <RouterLink
+              to="/"
+              className={cn(buttonVariants({ variant: "ghost" }))}
+            >
               Home
-            </Button>
-            <Button
-              color="inherit"
-              endIcon={<ExpandMoreIcon />}
-              onClick={(event) => setCategoryAnchor(event.currentTarget)}
-            >
-              Categories
-            </Button>
-            <Button component={RouterLink} to="/browse" color="inherit">
-              All products
-            </Button>
-          </Stack>
+            </RouterLink>
 
-          <Menu
-            anchorEl={categoryAnchor}
-            open={Boolean(categoryAnchor)}
-            onClose={() => setCategoryAnchor(null)}
-          >
-            {categories.map((category) => (
-              <MenuItem
-                key={category}
-                component={RouterLink}
-                to={categoryPath(category)}
-                onClick={() => setCategoryAnchor(null)}
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button variant="ghost" className="gap-1" />
+                }
               >
-                {category}
-              </MenuItem>
-            ))}
-          </Menu>
+                Categories
+                <ChevronDown data-icon="inline-end" className="size-4 opacity-70" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="min-w-48">
+                {categories.map((category) => (
+                  <DropdownMenuItem
+                    key={category}
+                    render={<RouterLink to={categoryPath(category)} />}
+                  >
+                    {category}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-          <Box sx={{ flexGrow: 1 }} />
-
-          <Tooltip title={mode === "dark" ? "Switch to light theme" : "Switch to dark theme"}>
-            <IconButton onClick={toggleMode} aria-label="Toggle colour theme">
-              {mode === "dark" ? <LightModeOutlinedIcon /> : <DarkModeOutlinedIcon />}
-            </IconButton>
-          </Tooltip>
-
-          <Tooltip title="Cart">
-            <IconButton
-              component={RouterLink}
-              to="/cart"
-              aria-label={`Cart, ${itemCount} ${itemCount === 1 ? "item" : "items"}`}
+            <RouterLink
+              to="/browse"
+              className={cn(buttonVariants({ variant: "ghost" }))}
             >
-              <CartBadge count={itemCount}>
-                <ShoppingCartOutlinedIcon />
-              </CartBadge>
-            </IconButton>
-          </Tooltip>
+              All products
+            </RouterLink>
+          </nav>
+
+          <div className="flex-1" />
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className={iconBtn}
+            onClick={toggleMode}
+            aria-label="Toggle colour theme"
+            title={mode === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+          >
+            {mode === "dark" ? <Sun /> : <Moon />}
+          </Button>
+
+          <RouterLink
+            to="/cart"
+            className={cn(buttonVariants({ variant: "ghost", size: "icon" }), iconBtn)}
+            aria-label={`Cart, ${itemCount} ${itemCount === 1 ? "item" : "items"}`}
+            title="Cart"
+          >
+            <CartBadge count={itemCount}>
+              <ShoppingCart />
+            </CartBadge>
+          </RouterLink>
 
           {user ? (
-            <>
-              <Tooltip title={user.name || user.email}>
-                <IconButton
-                  onClick={(event) => setAccountAnchor(event.currentTarget)}
-                  aria-label="Account menu"
-                  sx={{ ml: 0.5 }}
-                >
-                  <Avatar
-                    src={user.avatarUrl || undefined}
-                    sx={{
-                      width: { xs: 26, sm: 30 },
-                      height: { xs: 26, sm: 30 },
-                      bgcolor: "primary.main",
-                      fontSize: 14,
-                    }}
-                  >
-                    {(user.name || user.email || "?").charAt(0).toUpperCase()}
-                  </Avatar>
-                </IconButton>
-              </Tooltip>
-              <Menu
-                anchorEl={accountAnchor}
-                open={Boolean(accountAnchor)}
-                onClose={() => setAccountAnchor(null)}
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn(iconBtn, "ml-0.5")}
+                    aria-label="Account menu"
+                    title={user.name || user.email}
+                  />
+                }
               >
-                <MenuItem disabled sx={{ opacity: "1 !important", flexDirection: "column", alignItems: "flex-start" }}>
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                {user.avatarUrl ? (
+                  <img
+                    src={user.avatarUrl}
+                    alt=""
+                    className="size-[26px] rounded-full object-cover sm:size-[30px]"
+                  />
+                ) : (
+                  <span className="flex size-[26px] items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground sm:size-[30px]">
+                    {(user.name || user.email || "?").charAt(0).toUpperCase()}
+                  </span>
+                )}
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-56">
+                <DropdownMenuLabel className="font-normal">
+                  <div className="text-sm font-semibold text-foreground">
                     {user.name || "Your account"}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {user.email}
-                  </Typography>
-                </MenuItem>
-                <Divider />
-                <MenuItem
-                  component={RouterLink}
-                  to="/account"
-                  onClick={() => setAccountAnchor(null)}
-                >
+                  </div>
+                  <div className="text-xs text-muted-foreground">{user.email}</div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem render={<RouterLink to="/account" />}>
                   Account settings
-                </MenuItem>
-                <MenuItem onClick={handleLogout}>Sign out</MenuItem>
-              </Menu>
-            </>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLogout}>Sign out</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           ) : (
             <>
-              <Tooltip title="Sign in">
-                <IconButton
-                  component={RouterLink}
+              <RouterLink
+                to="/auth?mode=login"
+                className={cn(
+                  buttonVariants({ variant: "ghost", size: "icon" }),
+                  iconBtn,
+                  "sm:hidden"
+                )}
+                aria-label="Sign in"
+                title="Sign in"
+              >
+                <User />
+              </RouterLink>
+              <div className="ml-1 hidden items-center gap-2 sm:flex">
+                <RouterLink
                   to="/auth?mode=login"
-                  aria-label="Sign in"
-                  sx={{ display: { xs: "inline-flex", sm: "none" } }}
+                  className={cn(buttonVariants({ variant: "ghost" }))}
                 >
-                  <PersonOutlinedIcon />
-                </IconButton>
-              </Tooltip>
-              <Stack direction="row" spacing={1} sx={{ display: { xs: "none", sm: "flex" }, ml: 1 }}>
-                <Button component={RouterLink} to="/auth?mode=login" color="inherit">
                   Sign in
-                </Button>
-                <Button component={RouterLink} to="/auth?mode=signup" variant="contained">
+                </RouterLink>
+                <RouterLink
+                  to="/auth?mode=signup"
+                  className={cn(buttonVariants({ variant: "default" }))}
+                >
                   Create account
-                </Button>
-              </Stack>
+                </RouterLink>
+              </div>
             </>
           )}
-        </Toolbar>
-      </Container>
+        </div>
+      </PageContainer>
 
-      <Drawer open={drawerOpen} onClose={closeDrawer} sx={{ display: { md: "none" } }}>
-        <Box sx={{ width: 280 }} role="presentation">
-          <Stack
-            direction="row"
-            sx={{ alignItems: "center", justifyContent: "space-between", p: 2 }}
-          >
-            <Typography variant="h6">Menu</Typography>
-            <IconButton onClick={closeDrawer} aria-label="Close navigation menu">
-              <CloseIcon />
-            </IconButton>
-          </Stack>
-          <Divider />
-          <List onClick={closeDrawer}>
-            <ListItemButton component={RouterLink} to="/">
-              <ListItemText primary="Home" />
-            </ListItemButton>
-            <ListItemButton component={RouterLink} to="/browse">
-              <ListItemText primary="All products" />
-            </ListItemButton>
-            <ListItemButton component={RouterLink} to="/cart">
-              <ListItemText primary={itemCount > 0 ? `Cart (${itemCount})` : "Cart"} />
-            </ListItemButton>
-          </List>
-          <Divider />
-          <List subheader={<ListSubheader disableSticky>Categories</ListSubheader>} onClick={closeDrawer}>
+      <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
+        <SheetContent
+          side="left"
+          showCloseButton={false}
+          className="w-[280px] gap-0 p-0 sm:max-w-[280px]"
+        >
+          <SheetHeader className="flex-row items-center justify-between space-y-0 p-4">
+            <SheetTitle className="text-lg font-semibold">Menu</SheetTitle>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-10"
+              onClick={closeDrawer}
+              aria-label="Close navigation menu"
+            >
+              <X />
+            </Button>
+          </SheetHeader>
+          <Separator />
+          <nav className="flex flex-col py-1" onClick={closeDrawer}>
+            <RouterLink
+              to="/"
+              className="px-4 py-2.5 text-sm hover:bg-muted"
+            >
+              Home
+            </RouterLink>
+            <RouterLink
+              to="/browse"
+              className="px-4 py-2.5 text-sm hover:bg-muted"
+            >
+              All products
+            </RouterLink>
+            <RouterLink
+              to="/cart"
+              className="px-4 py-2.5 text-sm hover:bg-muted"
+            >
+              {itemCount > 0 ? `Cart (${itemCount})` : "Cart"}
+            </RouterLink>
+          </nav>
+          <Separator />
+          <div className="px-4 pt-3 pb-1 text-xs font-medium text-muted-foreground">
+            Categories
+          </div>
+          <nav className="flex flex-col pb-2" onClick={closeDrawer}>
             {categories.map((category) => (
-              <ListItemButton key={category} component={RouterLink} to={categoryPath(category)}>
-                <ListItemText primary={category} />
-              </ListItemButton>
+              <RouterLink
+                key={category}
+                to={categoryPath(category)}
+                className="px-4 py-2.5 text-sm hover:bg-muted"
+              >
+                {category}
+              </RouterLink>
             ))}
-          </List>
-          <Divider />
-          <Box sx={{ p: 2 }}>
+          </nav>
+          <Separator />
+          <div className="p-4">
             {user ? (
-              <Stack spacing={1}>
-                <Typography variant="body2" sx={{ fontWeight: 600 }} noWrap>
+              <div className="flex flex-col gap-2">
+                <p className="truncate text-sm font-semibold">
                   {user.name || "Your account"}
-                </Typography>
-                <Typography variant="caption" color="text.secondary" noWrap>
-                  {user.email}
-                </Typography>
-                <Button
-                  component={RouterLink}
+                </p>
+                <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+                <RouterLink
                   to="/account"
-                  variant="outlined"
                   onClick={closeDrawer}
-                  fullWidth
+                  className={cn(buttonVariants({ variant: "outline" }), "w-full")}
                 >
                   Account settings
-                </Button>
-                <Button onClick={handleLogout} fullWidth>
+                </RouterLink>
+                <Button onClick={handleLogout} className="w-full">
                   Sign out
                 </Button>
-              </Stack>
+              </div>
             ) : (
-              <Stack spacing={1}>
-                <Button
-                  component={RouterLink}
+              <div className="flex flex-col gap-2">
+                <RouterLink
                   to="/auth?mode=login"
-                  variant="outlined"
                   onClick={closeDrawer}
-                  fullWidth
+                  className={cn(buttonVariants({ variant: "outline" }), "w-full")}
                 >
                   Sign in
-                </Button>
-                <Button
-                  component={RouterLink}
+                </RouterLink>
+                <RouterLink
                   to="/auth?mode=signup"
-                  variant="contained"
                   onClick={closeDrawer}
-                  fullWidth
+                  className={cn(buttonVariants({ variant: "default" }), "w-full")}
                 >
                   Create account
-                </Button>
-              </Stack>
+                </RouterLink>
+              </div>
             )}
-          </Box>
-        </Box>
-      </Drawer>
-    </AppBar>
+          </div>
+        </SheetContent>
+      </Sheet>
+    </header>
   );
 }

@@ -1,91 +1,80 @@
 import { useLocation } from "react-router-dom";
-import Box from "@mui/material/Box";
-import Container from "@mui/material/Container";
-import LinearProgress from "@mui/material/LinearProgress";
-import Skeleton from "@mui/material/Skeleton";
-import Stack from "@mui/material/Stack";
-import ProductGridSkeleton from "./ProductGridSkeleton";
+import { Skeleton } from "@/components/ui/skeleton";
+import PageContainer from "./PageContainer";
+import { ProductGridSkeleton } from "./Skeletons";
 
 function BrowseFallback() {
   return (
-    <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 } }}>
-      <Skeleton animation="wave" width="42%" height={40} sx={{ mb: 1 }} />
-      <Skeleton animation="wave" width="28%" height={18} sx={{ mb: 3 }} />
-      <Box
-        sx={{
-          display: "grid",
-          gridTemplateColumns: { xs: "1fr", md: "minmax(0, 240px) minmax(0, 1fr)" },
-          gap: { xs: 2, md: 4 },
-          alignItems: "start",
-        }}
-      >
-        <Box sx={{ display: { xs: "none", md: "block" } }}>
-          <Skeleton animation="wave" variant="rounded" height={420} />
-        </Box>
-        <Box>
-          <Skeleton animation="wave" variant="rounded" height={40} sx={{ mb: 2.5, maxWidth: 280 }} />
+    <PageContainer className="py-6 md:py-10">
+      <Skeleton className="mb-1 h-10 w-[42%]" />
+      <Skeleton className="mb-6 h-[18px] w-[28%]" />
+      <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-[minmax(0,240px)_minmax(0,1fr)] md:gap-8">
+        <div className="hidden md:block">
+          <Skeleton className="h-[420px] rounded-lg" />
+        </div>
+        <div>
+          <Skeleton className="mb-2.5 h-10 max-w-[280px] rounded-lg" />
           <ProductGridSkeleton count={9} columns={3} />
-        </Box>
-      </Box>
-    </Container>
+        </div>
+      </div>
+    </PageContainer>
   );
 }
 
 function ProductDetailsFallback() {
   return (
-    <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 } }}>
-      <Skeleton animation="wave" width={160} height={20} sx={{ mb: 3 }} />
-      <Box
-        sx={{
-          display: "grid",
-          gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
-          gap: { xs: 3, md: 5 },
-        }}
-      >
-        <Skeleton animation="wave" variant="rounded" sx={{ minHeight: { xs: 280, md: 420 } }} />
-        <Stack spacing={1.5}>
-          <Skeleton animation="wave" width="30%" height={16} />
-          <Skeleton animation="wave" width="88%" height={36} />
-          <Skeleton animation="wave" width="55%" height={36} />
-          <Stack direction="row" spacing={1} sx={{ py: 1 }}>
-            <Skeleton animation="wave" variant="rounded" width={72} height={28} />
-            <Skeleton animation="wave" variant="rounded" width={88} height={28} />
-          </Stack>
-          <Skeleton animation="wave" width="40%" height={32} sx={{ mt: 1 }} />
-          <Skeleton animation="wave" height={18} />
-          <Skeleton animation="wave" height={18} width="90%" />
-          <Skeleton animation="wave" height={18} width="70%" />
-          <Stack direction="row" spacing={1.5} sx={{ pt: 2 }}>
-            <Skeleton animation="wave" variant="rounded" width={96} height={48} />
-            <Skeleton animation="wave" variant="rounded" height={48} sx={{ flexGrow: 1 }} />
-          </Stack>
-        </Stack>
-      </Box>
-    </Container>
+    <PageContainer className="py-6 md:py-10">
+      <Skeleton className="mb-6 h-5 w-40" />
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-10">
+        <Skeleton className="min-h-[280px] rounded-lg md:min-h-[420px]" />
+        <div className="flex flex-col gap-1.5">
+          <Skeleton className="h-4 w-[30%]" />
+          <Skeleton className="h-9 w-[88%]" />
+          <Skeleton className="h-9 w-[55%]" />
+          <div className="flex flex-row gap-2 py-2">
+            <Skeleton className="h-7 w-[72px] rounded-md" />
+            <Skeleton className="h-7 w-[88px] rounded-md" />
+          </div>
+          <Skeleton className="mt-2 h-8 w-[40%]" />
+          <Skeleton className="h-[18px] w-full" />
+          <Skeleton className="h-[18px] w-[90%]" />
+          <Skeleton className="h-[18px] w-[70%]" />
+          <div className="flex flex-row gap-1.5 pt-4">
+            <Skeleton className="h-12 w-24 rounded-md" />
+            <Skeleton className="h-12 flex-grow rounded-md" />
+          </div>
+        </div>
+      </div>
+    </PageContainer>
   );
 }
 
 function SimplePageFallback() {
   return (
-    <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 } }}>
-      <Skeleton animation="wave" width="36%" height={40} sx={{ mb: 1 }} />
-      <Skeleton animation="wave" width="24%" height={18} sx={{ mb: 3 }} />
-      <Stack spacing={2}>
-        <Skeleton animation="wave" variant="rounded" height={88} />
-        <Skeleton animation="wave" variant="rounded" height={88} />
-        <Skeleton animation="wave" variant="rounded" height={160} />
-      </Stack>
-    </Container>
+    <PageContainer className="py-6 md:py-10">
+      <Skeleton className="mb-1 h-10 w-[36%]" />
+      <Skeleton className="mb-6 h-[18px] w-[24%]" />
+      <div className="flex flex-col gap-4">
+        <Skeleton className="h-[88px] rounded-lg" />
+        <Skeleton className="h-[88px] rounded-lg" />
+        <Skeleton className="h-40 rounded-lg" />
+      </div>
+    </PageContainer>
   );
 }
-
 
 export default function RouteFallback() {
   const { pathname } = useLocation();
 
   return (
-    <Box>
-      <LinearProgress aria-label="Loading page" />
+    <div>
+      <div
+        role="progressbar"
+        aria-label="Loading page"
+        className="h-0.5 w-full overflow-hidden bg-muted"
+      >
+        <div className="h-full w-full animate-pulse bg-primary/70" />
+      </div>
       {pathname.startsWith("/browse") ? (
         <BrowseFallback />
       ) : pathname.startsWith("/products/") ? (
@@ -93,6 +82,6 @@ export default function RouteFallback() {
       ) : (
         <SimplePageFallback />
       )}
-    </Box>
+    </div>
   );
 }

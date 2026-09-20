@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react";
-import Badge from "@mui/material/Badge";
-import { usePrefersReducedMotion } from "../hooks/usePrefersReducedMotion";
-import { badgeBump, DURATION, EASE } from "../theme/motion";
-
-
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { ANIMATE, DURATION, usePrefersReducedMotion } from "../theme/motion";
 
 export default function CartBadge({ count, children }) {
   const reduceMotion = usePrefersReducedMotion();
@@ -22,20 +20,19 @@ export default function CartBadge({ count, children }) {
   }, [snapshot.pulse, snapshot.count]);
 
   return (
-    <Badge
-      badgeContent={count}
-      color="secondary"
-      sx={
-        snapshot.pulse && !reduceMotion
-          ? {
-              "& .MuiBadge-badge": {
-                animation: `${badgeBump} ${DURATION.slow}ms ${EASE}`,
-              },
-            }
-          : undefined
-      }
-    >
+    <span className="relative inline-flex">
       {children}
-    </Badge>
+      {count > 0 ? (
+        <Badge
+          variant="secondary"
+          className={cn(
+            "absolute -top-1.5 -right-1.5 h-5 min-w-5 justify-center rounded-full px-1 tabular-nums",
+            snapshot.pulse && !reduceMotion && ANIMATE.badgeBump
+          )}
+        >
+          {count}
+        </Badge>
+      ) : null}
+    </span>
   );
 }

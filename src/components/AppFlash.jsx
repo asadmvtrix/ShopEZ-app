@@ -1,34 +1,38 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import Box from "@mui/material/Box";
-import Fade from "@mui/material/Fade";
-import Portal from "@mui/material/Portal";
-import Typography from "@mui/material/Typography";
-import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
-import PriorityHighRoundedIcon from "@mui/icons-material/PriorityHighRounded";
+import { toast } from "sonner";
+import { Toaster } from "@/components/ui/sonner";
+import { useColorMode } from "../context/ColorModeProvider";
+import { showError } from "../lib/flash";
+import { toUserMessage } from "../lib/errors";
 import { consumeFlash, subscribeToast } from "../lib/flash";
+
+function shouldIgnoreUnhandled(reason) {
+  if (!reason) return true;
+  const message = String(reason?.message ?? reason).toLowerCase();
+  if (message.includes("resizeobserver") || message.includes("script error")) return true;
+  if (reason?.name === "AbortError") return true;
+  return false;
+}
 
 const HIDE_MS = {
   success: 2000,
   error: 2800,
 };
 
+function present(next) {
+  if (!next?.message) return;
+  const duration = HIDE_MS[next.tone] ?? HIDE_MS.success;
+  if (next.tone === "error") {
+    toast.error(next.message, { duration });
+  } else {
+    toast.success(next.message, { duration });
+  }
+}
+
 export default function AppFlash() {
   const location = useLocation();
-  const [toast, setToast] = useState(null);
-  const [open, setOpen] = useState(false);
-  const hideTimer = useRef(0);
-
-  function present(next) {
-    if (!next?.message) return;
-    window.clearTimeout(hideTimer.current);
-    setToast(next);
-    setOpen(true);
-    hideTimer.current = window.setTimeout(
-      () => setOpen(false),
-      HIDE_MS[next.tone] ?? HIDE_MS.success
-    );
-  }
+  const { mode } = useColorMode();
 
   useEffect(() => {
     present(consumeFlash());
@@ -38,63 +42,16 @@ export default function AppFlash() {
     return subscribeToast((next) => present(next));
   }, []);
 
-  useEffect(() => () => window.clearTimeout(hideTimer.current), []);
+  useEffect(() => {
+    function onRejection(event) {
+      if (shouldIgnoreUnhandled(event.reason)) return;
+      event.preventDefault?.();
+      showError(toUserMessage(event.reason));
+    }
 
-  if (!toast) return null;
+    window.addEventListener("unhandledrejection", onRejection);
+    return () => window.removeEventListener("unhandledrejection", onRejection);
+  }, []);
 
-  const isError = toast.tone === "error";
-
-  return (
-    <Portal>
-      <Fade in={open} timeout={{ enter: 160, exit: 140 }} unmountOnExit>
-        <Box
-          role={isError ? "alert" : "status"}
-          aria-live={isError ? "assertive" : "polite"}
-          sx={{
-            position: "fixed",
-            top: { xs: 16, sm: 20 },
-            right: { xs: 16, sm: 20 },
-            zIndex: (theme) => theme.zIndex.snackbar,
-            maxWidth: "min(360px, calc(100vw - 32px))",
-            display: "flex",
-            alignItems: "center",
-            gap: 1.25,
-            px: 1.5,
-            py: 1.1,
-            borderRadius: 1.5,
-            border: 1,
-            borderColor: "divider",
-            bgcolor: "background.paper",
-            boxShadow: (theme) =>
-              theme.palette.mode === "dark"
-                ? "0 8px 28px rgba(0,0,0,0.45)"
-                : "0 8px 28px rgba(20,48,74,0.12)",
-            pointerEvents: "none",
-          }}
-        >
-          <Box
-            sx={{
-              width: 22,
-              height: 22,
-              borderRadius: "50%",
-              display: "grid",
-              placeItems: "center",
-              flexShrink: 0,
-              bgcolor: isError ? "error.main" : "success.main",
-              color: isError ? "error.contrastText" : "success.contrastText",
-            }}
-          >
-            {isError ? (
-              <PriorityHighRoundedIcon sx={{ fontSize: 14 }} />
-            ) : (
-              <CheckRoundedIcon sx={{ fontSize: 14 }} />
-            )}
-          </Box>
-          <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.35, pr: 0.25 }}>
-            {toast.message}
-          </Typography>
-        </Box>
-      </Fade>
-    </Portal>
-  );
+  return <Toaster theme={mode} />;
 }

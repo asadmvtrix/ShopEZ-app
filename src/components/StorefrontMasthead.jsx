@@ -1,67 +1,50 @@
 import { useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
-import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import ButtonBase from "@mui/material/ButtonBase";
-import Container from "@mui/material/Container";
-import Fade from "@mui/material/Fade";
-import IconButton from "@mui/material/IconButton";
-import Paper from "@mui/material/Paper";
-import Stack from "@mui/material/Stack";
-import Typography from "@mui/material/Typography";
-import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
-import LocalShippingOutlinedIcon from "@mui/icons-material/LocalShippingOutlined";
-import SupportAgentOutlinedIcon from "@mui/icons-material/SupportAgentOutlined";
-import VerifiedOutlinedIcon from "@mui/icons-material/VerifiedOutlined";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Headphones,
+  ShieldCheck,
+  Truck,
+} from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import ProductImage from "./ProductImage";
 import QuickPickCard from "./QuickPickCard";
+import PageContainer from "./PageContainer";
 import { getHighlights } from "../data/products";
 import { FREE_SHIPPING_THRESHOLD, formatPrice, formatPriceShort } from "../config/store";
-import { MONO } from "../theme";
-import { DURATION } from "../theme/motion";
+import { ANIMATE } from "../theme/motion";
 
 const services = [
   {
-    icon: LocalShippingOutlinedIcon,
+    icon: Truck,
     text: `Free delivery over ${formatPriceShort(FREE_SHIPPING_THRESHOLD)}`,
   },
-  { icon: VerifiedOutlinedIcon, text: "Authorised distributors only" },
-  { icon: SupportAgentOutlinedIcon, text: "Build advice within one business day" },
+  { icon: ShieldCheck, text: "Authorised distributors only" },
+  { icon: Headphones, text: "Build advice within one business day" },
 ];
 
 function ServiceStrip() {
   return (
-    <Box sx={{ bgcolor: "background.paper", borderBottom: 1, borderColor: "divider" }}>
-      <Container maxWidth="lg">
-        <Stack
-          direction="row"
-          useFlexGap
-          sx={{
-            flexWrap: "wrap",
-            rowGap: 0.5,
-            columnGap: { xs: 2, sm: 4 },
-            justifyContent: { xs: "flex-start", md: "center" },
-            py: 1.25,
-          }}
-        >
+    <div className="border-b border-border bg-card">
+      <PageContainer>
+        <div className="flex flex-wrap justify-start gap-x-4 gap-y-1 py-2.5 sm:gap-x-8 md:justify-center">
           {services.map((service) => {
             const Icon = service.icon;
             return (
-              <Stack
+              <div
                 key={service.text}
-                direction="row"
-                spacing={0.75}
-                sx={{ alignItems: "center", color: "text.secondary" }}
+                className="flex items-center gap-1.5 text-muted-foreground"
               >
-                <Icon sx={{ fontSize: 18 }} />
-                <Typography variant="caption">{service.text}</Typography>
-              </Stack>
+                <Icon className="size-[18px] shrink-0" aria-hidden />
+                <span className="text-xs">{service.text}</span>
+              </div>
             );
           })}
-        </Stack>
-      </Container>
-    </Box>
+        </div>
+      </PageContainer>
+    </div>
   );
 }
 
@@ -76,148 +59,91 @@ export default function StorefrontMasthead({ spotlight, quickPicks }) {
 
   const strapline = getHighlights(active)[0];
 
-  const arrowSx = {
-    position: "absolute",
-    top: "50%",
-    transform: "translateY(-50%)",
-    bgcolor: "background.paper",
-    border: 1,
-    borderColor: "divider",
-    display: { xs: "none", sm: "inline-flex" },
-    "&:hover": { bgcolor: "action.hover" },
-  };
-
   return (
-    <Box component="section">
+    <section>
       <ServiceStrip />
 
-      <Container maxWidth="lg" sx={{ pt: { xs: 2.5, md: 4 } }}>
-        <Paper
-          variant="outlined"
-          sx={{
-            position: "relative",
-            borderRadius: 3,
-            px: { xs: 2.5, sm: 6, md: 8 },
-            pt: { xs: 3.5, md: 5 },
-            pb: { xs: 5, md: 6 },
-          }}
-        >
-          <Fade in key={active.id} timeout={DURATION.fast}>
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: { xs: "1fr", md: "1.1fr 0.9fr" },
-                gap: { xs: 3, md: 5 },
-                alignItems: "center",
-              }}
-            >
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                  {active.category}
-                </Typography>
-                <Typography
-                  variant="h1"
-                  sx={{
-                    fontSize: { xs: "1.85rem", sm: "2.35rem", md: "2.8rem" },
-                    lineHeight: 1.1,
-                    letterSpacing: "-0.03em",
-                  }}
+      <PageContainer className="pt-2.5 md:pt-4">
+        <div className="relative rounded-xl border border-border bg-card px-2.5 pt-3.5 pb-5 sm:px-12 sm:pt-5 sm:pb-6 md:px-16 md:pt-5 md:pb-6">
+          <div
+            key={active.id}
+            className={cn(
+              "grid grid-cols-1 items-center gap-6 md:grid-cols-[1.1fr_0.9fr] md:gap-10",
+              ANIMATE.contentEnter
+            )}
+          >
+            <div>
+              <p className="mb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                {active.category}
+              </p>
+              <h1 className="text-[1.85rem] leading-tight font-semibold tracking-tight sm:text-[2.35rem] md:text-[2.8rem]">
+                {active.name}
+              </h1>
+              {strapline ? (
+                <p className="mt-4 max-w-[460px] text-muted-foreground">{strapline}.</p>
+              ) : null}
+              <div className="mt-6 flex flex-row flex-wrap items-center gap-x-4 gap-y-1.5">
+                <RouterLink
+                  to={`/products/${active.id}`}
+                  className={cn(buttonVariants({ variant: "secondary", size: "lg" }))}
                 >
-                  {active.name}
-                </Typography>
-                {strapline && (
-                  <Typography color="text.secondary" sx={{ mt: 2, maxWidth: 460 }}>
-                    {strapline}.
-                  </Typography>
-                )}
-                <Stack
-                  direction="row"
-                  spacing={2}
-                  sx={{ alignItems: "center", flexWrap: "wrap", rowGap: 1.5, mt: 3 }}
-                >
-                  <Button
-                    component={RouterLink}
-                    to={`/products/${active.id}`}
-                    variant="contained"
-                    color="secondary"
-                    size="large"
-                  >
-                    Shop now
-                  </Button>
-                  <Typography variant="h3" sx={{ fontFamily: MONO }}>
-                    {formatPrice(active.price)}
-                  </Typography>
-                </Stack>
-              </Box>
+                  Shop now
+                </RouterLink>
+                <p className="font-mono text-xl font-semibold md:text-[1.375rem]">
+                  {formatPrice(active.price)}
+                </p>
+              </div>
+            </div>
 
-              <ProductImage
-                product={active}
-                height={{ xs: 168, sm: 250, md: 290 }}
-                sx={{ borderRadius: 2 }}
-              />
-            </Box>
-          </Fade>
+            <ProductImage
+              product={active}
+              height={{ xs: 168, sm: 250, md: 290 }}
+              className="rounded-lg"
+            />
+          </div>
 
-          <IconButton
+          <Button
+            variant="outline"
+            size="icon"
             onClick={() => step(-1)}
             aria-label="Previous product"
-            sx={{ ...arrowSx, left: { sm: 10, md: 16 } }}
+            className="absolute top-1/2 left-2.5 hidden size-10 -translate-y-1/2 bg-card md:left-4 sm:inline-flex"
           >
-            <ChevronLeftIcon />
-          </IconButton>
-          <IconButton
+            <ChevronLeft />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
             onClick={() => step(1)}
             aria-label="Next product"
-            sx={{ ...arrowSx, right: { sm: 10, md: 16 } }}
+            className="absolute top-1/2 right-2.5 hidden size-10 -translate-y-1/2 bg-card md:right-4 sm:inline-flex"
           >
-            <ChevronRightIcon />
-          </IconButton>
+            <ChevronRight />
+          </Button>
 
-          <Stack
-            direction="row"
-            spacing={1}
-            sx={{
-              position: "absolute",
-              bottom: 16,
-              left: 0,
-              right: 0,
-              justifyContent: "center",
-            }}
-          >
+          <div className="absolute right-0 bottom-4 left-0 flex justify-center gap-2">
             {spotlight.map((product, slide) => (
-              <ButtonBase
+              <button
                 key={product.id}
+                type="button"
                 onClick={() => setIndex(slide)}
                 aria-label={`Show ${product.name}`}
-                aria-current={slide === index}
-                sx={{
-                  width: slide === index ? 26 : 14,
-                  height: 5,
-                  borderRadius: 3,
-                  bgcolor: slide === index ? "secondary.main" : "divider",
-                  transition: (theme) =>
-                    theme.transitions.create(["width", "background-color"], {
-                      duration: theme.transitions.duration.shorter,
-                    }),
-                }}
+                aria-current={slide === index ? "true" : undefined}
+                className={cn(
+                  "h-1.5 rounded-full transition-[width,background-color] duration-150",
+                  slide === index ? "w-[26px] bg-secondary" : "w-3.5 bg-border"
+                )}
               />
             ))}
-          </Stack>
-        </Paper>
+          </div>
+        </div>
 
-        <Box
-          sx={{
-            display: "grid",
-            gap: { xs: 1.5, sm: 2 },
-            gridTemplateColumns: { xs: "1fr", md: "repeat(3, 1fr)" },
-            mt: { xs: 1.5, sm: 2 },
-          }}
-        >
+        <div className="mt-1.5 grid grid-cols-1 gap-1.5 sm:mt-2 sm:gap-4 md:grid-cols-3">
           {quickPicks.map((product) => (
             <QuickPickCard key={product.id} product={product} />
           ))}
-        </Box>
-      </Container>
-    </Box>
+        </div>
+      </PageContainer>
+    </section>
   );
 }

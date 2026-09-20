@@ -1,25 +1,15 @@
-import Box from "@mui/material/Box";
-import Stack from "@mui/material/Stack";
-import Typography from "@mui/material/Typography";
-
 export default function SectionHeader({ title, subtitle, action, id }) {
   return (
-    <Stack
-      direction="row"
-      spacing={2}
-      sx={{ alignItems: "flex-end", justifyContent: "space-between", mb: 2.5 }}
-    >
-      <Box>
-        <Typography variant="h2" id={id}>
+    <div className="mb-2.5 flex flex-row items-end justify-between gap-4">
+      <div>
+        <h2 id={id} className="text-xl font-semibold tracking-tight sm:text-2xl md:text-[1.75rem]">
           {title}
-        </Typography>
-        {subtitle && (
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            {subtitle}
-          </Typography>
-        )}
-      </Box>
+        </h2>
+        {subtitle ? (
+          <p className="mt-0.5 text-sm text-muted-foreground">{subtitle}</p>
+        ) : null}
+      </div>
       {action}
-    </Stack>
+    </div>
   );
 }

@@ -1,11 +1,8 @@
 import { Component } from "react";
 import { Link as RouterLink } from "react-router-dom";
-import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import Container from "@mui/material/Container";
-import Stack from "@mui/material/Stack";
-import Typography from "@mui/material/Typography";
-import { MONO } from "../theme";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import PageContainer from "./PageContainer";
 
 export default class ErrorBoundary extends Component {
   state = { crashed: false };
@@ -30,47 +27,34 @@ export default class ErrorBoundary extends Component {
     }
 
     return (
-      <Container maxWidth="sm" sx={{ py: { xs: 8, md: 12 }, textAlign: "center" }}>
-        <Typography
-          variant="h1"
-          sx={{ fontFamily: MONO, color: "text.disabled", fontSize: { xs: "2.5rem", md: "3.25rem" } }}
-        >
-          Oops
-        </Typography>
-        <Typography variant="h2" sx={{ mt: 1 }}>
+      <PageContainer className="max-w-xl py-16 text-center md:py-24">
+        <p className="font-mono text-4xl text-muted-foreground/50 md:text-5xl">Oops</p>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">
           Something went wrong
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5, mb: 4 }}>
+        </h1>
+        <p className="mt-1.5 mb-8 text-sm text-muted-foreground">
           ShopEZ hit an unexpected error. You can try again, or head back home.
-        </Typography>
-        <Stack
-          direction={{ xs: "column", sm: "row" }}
-          spacing={1.5}
-          sx={{ justifyContent: "center" }}
-        >
-          <Button variant="contained" onClick={this.handleRetry}>
-            Try again
-          </Button>
-          <Button
-            component={RouterLink}
+        </p>
+        <div className="flex flex-col items-center justify-center gap-1.5 sm:flex-row">
+          <Button onClick={this.handleRetry}>Try again</Button>
+          <RouterLink
             to="/"
-            variant="outlined"
             onClick={this.handleRetry}
+            className={cn(buttonVariants({ variant: "outline" }))}
           >
             Back to home
-          </Button>
-        </Stack>
-        <Box sx={{ mt: 3 }}>
+          </RouterLink>
+        </div>
+        <div className="mt-6">
           <Button
-            size="small"
-            color="inherit"
+            size="sm"
+            variant="ghost"
             onClick={() => window.location.assign("/")}
-            sx={{ textTransform: "none" }}
           >
             Reload the app
           </Button>
-        </Box>
-      </Container>
+        </div>
+      </PageContainer>
     );
   }
 }

@@ -377,3 +377,95 @@ Phase 2 did **not** commit.
 
 ---
 
+## Phase 3 — Shell and shared UI (2026-09-20)
+
+### What Phase 3 required
+Migrate shell / shared chrome off MUI: Navbar, SiteFooter, StorefrontMasthead, BrandMark, PageEnter, AppFlash (+ `lib/flash` API), Skeletons, RouteFallback, ErrorBoundary, CartBadge, SectionHeader, App layout, plus new `PageContainer`. Mount `<Toaster />` once; keep flash public API; mobile nav via Sheet.
+
+### Docs grounding (Button / links)
+Current shadcn Base UI Button docs (**As Link**): do **not** use `Button` `render={<Link />}` / `nativeButton={false}` for navigation — Base UI Button always applies `role="button"`, which breaks link semantics. Use `buttonVariants()` on a plain `react-router` `Link` / `<a>` instead.  
+`DropdownMenuTrigger` / `DropdownMenuItem` still use Base UI `render` (menus/items), which is correct for that API. Sheet + DropdownMenu were added via `npx shadcn@latest add` (allowed when the slice needs them).
+
+### Files changed (Phase 3 only)
+| Path | Change |
+|---|---|
+| `src/components/PageContainer.jsx` | **new** — `max-w-7xl mx-auto px-4 sm:px-6 lg:px-8` |
+| `src/components/Navbar.jsx` | sticky header, Sheet drawer, DropdownMenus, lucide icons, `buttonVariants` links |
+| `src/components/SiteFooter.jsx` | Tailwind + PageContainer + Separator |
+| `src/components/StorefrontMasthead.jsx` | Tailwind shell; still embeds MUI `ProductImage` / `QuickPickCard` (Phase 4) |
+| `src/components/BrandMark.jsx` | plain SVG; handle stroke `var(--secondary)` |
+| `src/components/PageEnter.jsx` | div + motion-safe class (no MUI Box) |
+| `src/components/AppFlash.jsx` | sonner `toast.*`; mounts `<Toaster theme={mode} />` |
+| `src/components/ui/sonner.jsx` | dropped `next-themes`; theme passed as prop |
+| `src/components/Skeletons.jsx` | shadcn Skeleton + PageContainer |
+| `src/components/RouteFallback.jsx` | Tailwind + Skeleton fallbacks |
+| `src/components/ErrorBoundary.jsx` | Button / `buttonVariants` Link |
+| `src/components/CartBadge.jsx` | shadcn Badge overlay + bump class |
+| `src/components/SectionHeader.jsx` | semantic heading + Tailwind |
+| `src/App.jsx` | `<main className="flex-grow">` (no MUI Box) |
+| `src/components/ui/sheet.jsx` | **new** (shadcn) |
+| `src/components/ui/dropdown-menu.jsx` | **new** (shadcn) |
+| `package.json` / lock | removed unused `next-themes` |
+| `MIGRATION_LOG.md` | this Phase 3 section |
+
+`lib/flash.js` public API unchanged (`setFlash`, `consumeFlash`, `showToast`, `showError`, `subscribeToast`). Presentation lives in AppFlash → sonner.
+
+### Deviations / decisions
+1. **Router links** use `buttonVariants` + `Link`, not Button `render` — per current shadcn docs (overrides UI_MIGRATION “use render for links” note).
+2. **Tooltip** — dropped MUI Tooltip; `title` + existing `aria-label` on icon controls (Phase 0 noted Tooltip as supplementary).
+3. **next-themes** — uninstalled; Toaster theme comes from `useColorMode().mode`.
+4. **StorefrontMasthead** still depends on Phase 4 MUI children (`ProductImage`, `QuickPickCard`) for product media/cards.
+5. **Lint** — full-repo lint **30** errors (was 31): AppFlash `set-state-in-effect` gone; no new Phase 3 lint categories.
+6. Did **not** commit.
+
+### Verification
+| Check | Result |
+|---|---|
+| `npm run build` | **PASS** — vite 8.3.0 |
+| `npm run lint` | **FAIL** — 30 errors (baseline −1 vs Phase 0/1/2) |
+| Phase 3 files `@mui` imports | **none** |
+| `next-themes` | removed from dependencies |
+
+#### Bundle sizes after Phase 3 (raw + gzip level 9)
+
+| Asset class | Raw | Gzip (level 9) | vs Phase 2 |
+|---|---:|---:|---|
+| All JS | 1090.28 kB (1,116,444 B) | 337.35 kB (345,443 B) | **+~162 kB raw** (Sheet/Menu/sonner in app graph; MUI still present) |
+| All CSS | 61.73 kB (63,213 B) | 10.98 kB (11,245 B) | **+~21 kB raw** (more utilities) |
+| **JS + CSS** | **1152.01 kB** | **348.33 kB** | |
+
+MUI chunk ~329.6 kB raw / ~100.7 kB gzip (down from Phase 0 ~372 / ~114) — shell no longer pulls AppBar/Drawer/Menu into as many call sites, but pages still import MUI heavily.
+
+### Manual test checklist (375px & 1280px, light & dark)
+- [ ] Sticky Navbar: brand, Home / Categories / All products, theme toggle, cart badge, account or sign-in/signup
+- [ ] Categories + account dropdowns open/close; items navigate
+- [ ] Mobile: hamburger opens left Sheet; links close drawer; auth block works
+- [ ] Cart badge bumps when count increases (motion allowed)
+- [ ] Footer links + policy copy; year copyright
+- [ ] Home masthead: service strip, slide arrows/dots, Shop now, quick picks still render
+- [ ] Route transitions: soft enter; lazy route skeletons / progress strip
+- [ ] Flash: sign-out / `setFlash` shows sonner toast (success ~2s, error ~2.8s); no FOUC theme mismatch on toasts
+- [ ] Error boundary path (optional): throw in a child → Try again / Back to home
+- [ ] Spot-check coexistence: MUI pages (Browse, Auth, Cart) under new shell — no obvious double backgrounds / broken sticky header
+
+### Suggested commit message (when you choose to commit)
+
+```
+chore: migrate shell UI to Tailwind/shadcn (Phase 3)
+
+Replace Navbar/footer/flash/skeletons with shared PageContainer,
+Sheet, and sonner while keeping flash API and MUI pages intact.
+```
+
+Phase 3 did **not** commit.
+
+### Blockers / notes for Phase 4
+1. Catalog slice: ProductCard, ProductGrid, ProductImage, QuickPickCard, CategoryTiles, Home, Browse — finish masthead children (`ProductImage` / `QuickPickCard`) still on MUI.
+2. Browse: keep URL search-param filter logic exact; sidebar + Sheet filters; do not change catalog service/shape.
+3. Bundle is temporarily larger (shell primitives + remaining MUI); expect shrink mainly in Phase 7 uninstall.
+4. Lint still red (30) — cleanup timing still open.
+5. Dirty WIP still mixed with migration diffs — commit/stash strategy still open.
+6. Spot-check MUI ↔ Tailwind coexistence on Home after ProductImage/QuickPickCard migrate (nested surfaces).
+
+---
+
