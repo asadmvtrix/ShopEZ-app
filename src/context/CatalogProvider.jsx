@@ -1,4 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { fetchCatalog } from "../services/catalog";
+import {
+  getBrand,
+  getCategories,
+  getCategorySummaries,
+  getHighlights,
+  getSku,
+} from "../data/products";
 
 const CatalogContext = createContext(null);
 
@@ -9,14 +17,6 @@ export function useCatalog() {
   }
   return context;
 }
-import { fetchCatalog } from "../services/catalog";
-import {
-  getBrand,
-  getCategories,
-  getCategorySummaries,
-  getHighlights,
-  getSku,
-} from "../data/products";
 
 export default function CatalogProvider({ children }) {
   const [products, setProducts] = useState([]);

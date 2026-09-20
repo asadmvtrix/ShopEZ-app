@@ -1,5 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useCatalog } from "./CatalogProvider";
+import { MAX_QUANTITY_PER_ITEM } from "../config/store";
+import { readJSON, writeJSON } from "../lib/storage";
 
 const CartContext = createContext(null);
 
@@ -10,8 +12,6 @@ export function useCart() {
   }
   return context;
 }
-import { MAX_QUANTITY_PER_ITEM } from "../config/store";
-import { readJSON, writeJSON } from "../lib/storage";
 
 const CART_KEY = "shopez.cart";
 

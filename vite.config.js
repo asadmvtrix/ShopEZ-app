@@ -10,7 +10,6 @@ export default defineConfig({
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },
-  // So phones on the same Wi‑Fi can open the Network URL Vite prints.
   server: {
     host: true,
     port: 5173,
@@ -19,11 +18,9 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        // MUI and React change far less often than the store code, so keeping them
-        // in their own chunks lets returning visitors reuse the cached copies.
         manualChunks(id) {
           if (!id.includes("node_modules")) return undefined;
-          if (id.includes("@mui") || id.includes("@emotion")) return "mui";
+          if (id.includes("lucide-react")) return "lucide";
           if (/node_modules[/\\](react|react-dom|scheduler|react-router)/.test(id)) {
             return "react";
           }

@@ -10,6 +10,7 @@ import {
 const TAX_RATE = 0.08;
 const SHIPPING_FEE = 9.99;
 const FREE_SHIPPING_THRESHOLD = 99;
+const MAX_QTY = 10;
 
 function toCents(amount) {
   return Math.round(Number(amount) * 100);
@@ -27,23 +28,19 @@ function calculateTotals(subtotal) {
   };
 }
 
-function normalizeItems(raw) {
+/** Accept cart shape from the client; prices are ignored until DB lookup. */
+function parseCartLines(raw) {
   if (!Array.isArray(raw) || raw.length === 0) return [];
   return raw
     .map((item) => {
       const product = item?.product || {};
       const productId = Number(item?.id ?? product.id);
-      const name = String(product.name || item?.product_name || "").trim();
-      const unitPrice = Number(product.price ?? item?.unit_price);
       const quantity = Number(item?.quantity);
-      if (!name || !Number.isFinite(unitPrice) || unitPrice < 0) return null;
+      if (!Number.isFinite(productId) || productId < 1) return null;
       if (!Number.isFinite(quantity) || quantity < 1) return null;
       return {
-        product_id: Number.isFinite(productId) ? productId : null,
-        product_name: name,
-        unit_price: unitPrice,
-        quantity: Math.min(Math.floor(quantity), 10),
-        line_total: Number((unitPrice * Math.min(Math.floor(quantity), 10)).toFixed(2)),
+        product_id: productId,
+        quantity: Math.min(Math.floor(quantity), MAX_QTY),
       };
     })
     .filter(Boolean);
@@ -63,16 +60,50 @@ export default async function handler(req, res) {
   try {
     const { user } = await requireUser(req);
     const body = await readJson(req);
-    const lines = normalizeItems(body?.items);
+    const cartLines = parseCartLines(body?.items);
 
-    if (!lines.length) {
+    if (!cartLines.length) {
       sendJson(res, 400, { error: "Your cart is empty." });
       return;
     }
 
+    const admin = getAdminClient();
+    const productIds = [...new Set(cartLines.map((line) => line.product_id))];
+
+    const { data: products, error: productsError } = await admin
+      .from("products")
+      .select("id, name, price")
+      .in("id", productIds);
+
+    if (productsError) {
+      sendJson(res, 500, {
+        error: productsError.message || "Could not load products.",
+      });
+      return;
+    }
+
+    const byId = new Map((products ?? []).map((row) => [Number(row.id), row]));
+    if (byId.size !== productIds.length) {
+      sendJson(res, 400, {
+        error: "A product in your cart is no longer available. Refresh and try again.",
+      });
+      return;
+    }
+
+    const lines = cartLines.map((line) => {
+      const product = byId.get(line.product_id);
+      const unitPrice = Number(product.price);
+      return {
+        product_id: line.product_id,
+        product_name: String(product.name),
+        unit_price: unitPrice,
+        quantity: line.quantity,
+        line_total: Number((unitPrice * line.quantity).toFixed(2)),
+      };
+    });
+
     const subtotal = lines.reduce((sum, line) => sum + line.line_total, 0);
     const totals = calculateTotals(subtotal);
-    const admin = getAdminClient();
 
     const { data: order, error: orderError } = await admin
       .from("orders")

@@ -6,6 +6,8 @@ import {
   markGoogleOAuthAttempt,
   supabase,
 } from "../lib/supabase";
+import { remove } from "../lib/storage";
+import { toUserMessage } from "../lib/errors";
 
 const AuthContext = createContext(null);
 
@@ -16,8 +18,6 @@ export function useAuth() {
   }
   return context;
 }
-import { remove } from "../lib/storage";
-import { toUserMessage } from "../lib/errors";
 
 remove("shopez.users");
 remove("shopez.session");
@@ -234,7 +234,7 @@ export default function AuthProvider({ children }) {
     try {
       if (supabase) await supabase.auth.signOut();
     } catch {
-
+      // Still clear local session if sign-out request fails.
     }
     setUser(null);
   }, []);
@@ -336,7 +336,7 @@ export default function AuthProvider({ children }) {
       try {
         await supabase.auth.signOut();
       } catch {
-
+        // Account is already deleted; ignore sign-out errors.
       }
       setUser(null);
       return { success: true };

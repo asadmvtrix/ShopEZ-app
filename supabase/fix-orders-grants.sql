@@ -1,10 +1,16 @@
--- Run once in Supabase → SQL Editor (fixes "permission denied for table orders")
+-- Run once in Supabase → SQL Editor (same project as VITE_SUPABASE_URL)
+-- Orders are created by the Vercel API with the service role key.
+-- Authenticated clients only need to read their own orders (RLS still applies).
 
-grant usage on schema public to anon, authenticated;
+grant usage on schema public to anon, authenticated, service_role;
 
-grant select on table public.products to anon, authenticated;
+grant select on table public.products to anon, authenticated, service_role;
 
-grant select, insert on table public.orders to authenticated;
-grant select, insert on table public.order_items to authenticated;
+grant all on table public.orders to service_role;
+grant all on table public.order_items to service_role;
 
--- Keep existing RLS policies; these grants let authenticated users use them.
+revoke insert, update, delete on table public.orders from authenticated;
+revoke insert, update, delete on table public.order_items from authenticated;
+
+grant select on table public.orders to authenticated;
+grant select on table public.order_items to authenticated;

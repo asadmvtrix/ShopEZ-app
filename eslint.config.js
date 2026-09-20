@@ -26,6 +26,20 @@ export default defineConfig([
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
     },
   },
+  {
+    files: ['api/**/*.{js,cjs,mjs}'],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
+  // Context modules export hooks alongside providers (standard React pattern).
+  {
+    files: ['src/context/**/*.{js,jsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+      'react-hooks/set-state-in-effect': 'off',
+    },
+  },
   // shadcn UI modules export helpers (e.g. buttonVariants) alongside components.
   {
     files: ['src/components/ui/**/*.{js,jsx}'],

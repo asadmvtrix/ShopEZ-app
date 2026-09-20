@@ -7,7 +7,7 @@ export function markAppEnter() {
   try {
     sessionStorage.setItem(ENTER_KEY, "1");
   } catch {
-
+    // Ignore sessionStorage failures (private mode / quota).
   }
 }
 
