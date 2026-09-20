@@ -274,3 +274,106 @@ Phase 1 did **not** commit.
 
 ---
 
+## Phase 2 — Theme tokens, color mode, fonts, motion (2026-09-20)
+
+### What Phase 2 required
+1. Map MUI palette (from `src/theme/index.js`) → shadcn CSS variables in `src/index.css` (`:root` / `.dark`) + `@theme inline`.
+2. Fonts: IBM Plex → `--font-sans` / `--font-mono` (no Geist).
+3. Bridge `ColorModeProvider` so MUI mode and `<html class="dark">` always agree; FOUC script in `index.html`.
+4. Convert Emotion keyframes in `theme/motion.js` to CSS `@keyframes` under `@theme`; wrap PageEnter in `motion-safe`; keep hook APIs.
+5. `--radius` = MUI `shape.borderRadius` (6px); no default shadows.
+
+### Token mapping (inspected vs palette names)
+
+| Token | Light | Dark | Source |
+|---|---|---|---|
+| background | `#f4f2ee` | `#10161c` | `palette.background.default` |
+| foreground | `#14304a` | `#e6edf3` | `palette.text.primary` |
+| card / popover | `#ffffff` | `#171f27` | `palette.background.paper` |
+| primary | `#14304a` | `#8ab6de` | CTA `Button color="primary"` / AppBar text context |
+| secondary | `#d9480f` | `#ff8a4c` | Orange accent (`CartBadge`, prices) |
+| muted-foreground | `#5b6b7b` | `#9aa9b7` | `palette.text.secondary` |
+| border / input | `#e0dcd4` | `#26313c` | `palette.divider` |
+| ring | primary | primary | focus |
+| success / warning / destructive | MUI defaults | MUI defaults | Alerts, stock Chip, AppFlash |
+| --radius | `0.375rem` (6px) | same | `shape.borderRadius: 6` |
+
+Muted/accent surfaces are soft fills (`#ebe8e2` / `#1c252e`) derived for hover/subtle UI — not named in the MUI palette.
+
+Body/html base styles re-enabled carefully: `html { font-sans }`, `body { bg-background text-foreground }` so tokens match CssBaseline palette.
+
+### Color mode bridge
+- `ColorModeProvider` still drives MUI `ThemeProvider` + `CssBaseline`.
+- `useLayoutEffect` toggles `document.documentElement.classList` (`dark`) and `colorScheme` whenever resolved `mode` changes.
+- Persistence unchanged: `lib/storage` key `shopez.colorMode`; `null` = system via `useMediaQuery`.
+- Inline FOUC script in `index.html` mirrors the same read/parse/system logic before first paint.
+
+### Motion
+- `@keyframes content-enter`, `badge-bump`, `confirm-pulse` registered in `@theme` with `--animate-*` utilities.
+- `motion.js`: dropped `@mui/system` `keyframes`; exports CSS animation **name strings** (existing MUI `sx` consumers keep working) plus `ANIMATE.*` Tailwind class helpers.
+- `PageEnter` uses `motion-safe:animate-content-enter` (no JS reduced-motion branch needed for enter).
+- `useWarmReveal` API unchanged (timing gate only; no CSS transition to convert).
+
+### Files changed (Phase 2 only)
+| Path | Change |
+|---|---|
+| `src/index.css` | MUI-mapped tokens, IBM Plex fonts, keyframes, body/html base |
+| `src/theme/motion.js` | CSS keyframe names; no Emotion |
+| `src/context/ColorModeProvider.jsx` | `.dark` + `colorScheme` sync via `useLayoutEffect` |
+| `src/components/PageEnter.jsx` | `motion-safe` CSS enter animation |
+| `index.html` | FOUC color-mode script |
+| `MIGRATION_LOG.md` | this Phase 2 section |
+
+### Deviations / decisions
+1. **Success/warning tokens** added (used by Alerts / Chip / AppFlash) even though not in custom `palettes` object — values match MUI built-in defaults.
+2. **shadcn `secondary`** mapped to orange retail accent (true MUI secondary), not a muted gray. CTA navy stays `primary`.
+3. **CartBadge / ProductCard / QuickPickCard** still apply bump/pulse via MUI `sx` + string keyframe names (works with global CSS `@keyframes`). Full class migration deferred to component phases.
+4. **Lint DoD** — still 31 baseline errors; Phase 2 files introduce no new lint categories.
+5. Did **not** commit (phase does not require it).
+
+### Verification
+| Check | Result |
+|---|---|
+| `npm run build` | **PASS** — vite 8.3.0, 812 modules |
+| `npm run lint` | **FAIL** — 31 errors (unchanged vs Phase 0/1 baseline) |
+| FOUC script in `dist/index.html` | Present; same `shopez.colorMode` logic |
+| CSS tokens / keyframes in bundle | `#f4f2ee`, `#14304a`, `content-enter`, `badge-bump`, `confirm-pulse`, `--radius:.375rem` |
+
+#### Bundle sizes after Phase 2 (raw + gzip level 9)
+
+| Asset class | Raw | Gzip (level 9) | vs Phase 1 |
+|---|---:|---:|---|
+| All JS | 927.93 kB (950,196 B) | 282.14 kB (288,907 B) | ~flat |
+| All CSS | 40.69 kB (41,664 B) | 7.39 kB (7,567 B) | ~+0.4 kB raw |
+| **JS + CSS** | **968.61 kB** | **289.53 kB** | |
+
+### Manual test checklist (375px & 1280px, light & dark)
+- [ ] Hard refresh: no light/dark flash; `<html>` has `dark` when preference/system is dark
+- [ ] Navbar / Account theme toggle: MUI palette and Tailwind tokens switch together
+- [ ] System preference: set mode to System, flip OS theme — both MUI and `.dark` update
+- [ ] Page navigations: soft fade-in still present; reduced-motion OS setting disables it
+- [ ] Cart badge bump + add-to-cart confirm pulse still animate when motion allowed
+- [ ] Fonts remain IBM Plex Sans/Mono (not Geist)
+- [ ] Surfaces/CTAs look like pre-migration colors (navy primary, orange secondary)
+
+### Suggested commit message (when you choose to commit)
+
+```
+chore: map ShopEZ theme tokens and dark class bridge (Phase 2)
+
+Align shadcn CSS variables with the MUI palette, sync .dark on html
+with ColorModeProvider, and move motion keyframes to Tailwind.
+```
+
+Phase 2 did **not** commit.
+
+### Blockers / notes for Phase 3
+1. Start shell migration (Navbar, SiteFooter, AppFlash→sonner, Skeletons, PageContainer, etc.) on top of these tokens.
+2. Mount `<Toaster />` once; decide keep/drop `next-themes` (currently unused).
+3. Button `render` (Base UI) for RouterLink — verify against current shadcn docs when wiring Navbar.
+4. Lint still red (31 baseline) — cleanup timing still open.
+5. Dirty WIP still mixed with migration diffs — commit/stash strategy still open.
+6. MUI still owns almost all UI; body token styles + CssBaseline both set background — spot-check for double-application quirks after Preflight.
+
+---
+

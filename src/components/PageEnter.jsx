@@ -1,25 +1,17 @@
+import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import Box from "@mui/material/Box";
-import { usePrefersReducedMotion } from "../hooks/usePrefersReducedMotion";
-import { contentEnter, DURATION, EASE } from "../theme/motion";
-
+import { ANIMATE } from "../theme/motion";
 
 export default function PageEnter({ children }) {
   const { pathname } = useLocation();
-  const reduceMotion = usePrefersReducedMotion();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
 
   return (
-    <Box
-      key={pathname}
-      sx={
-        reduceMotion
-          ? undefined
-          : {
-              animation: `${contentEnter} ${DURATION.enter}ms ${EASE} backwards`,
-            }
-      }
-    >
+    <div key={pathname} className={ANIMATE.contentEnter}>
       {children}
-    </Box>
+    </div>
   );
 }

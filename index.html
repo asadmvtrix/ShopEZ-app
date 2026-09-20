@@ -10,6 +10,25 @@
     />
     <meta name="theme-color" content="#14304a" />
     <title>ShopEZ - Shop at your Ease!</title>
+    <script>
+      (function () {
+        try {
+          var key = "shopez.colorMode";
+          var raw = localStorage.getItem(key);
+          var saved = raw == null ? null : JSON.parse(raw);
+          var mode =
+            saved === "light" || saved === "dark"
+              ? saved
+              : window.matchMedia("(prefers-color-scheme: dark)").matches
+                ? "dark"
+                : "light";
+          var root = document.documentElement;
+          if (mode === "dark") root.classList.add("dark");
+          else root.classList.remove("dark");
+          root.style.colorScheme = mode;
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

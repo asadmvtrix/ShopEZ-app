@@ -1,5 +1,22 @@
-import { keyframes } from "@mui/system";
+import { useEffect, useState } from "react";
 
+const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
+
+export function usePrefersReducedMotion() {
+  const [reduced, setReduced] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia(REDUCED_MOTION_QUERY).matches : false
+  );
+
+  useEffect(() => {
+    const media = window.matchMedia(REDUCED_MOTION_QUERY);
+    const onChange = () => setReduced(media.matches);
+    onChange();
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, []);
+
+  return reduced;
+}
 
 export const DURATION = {
   instant: 100,
@@ -17,20 +34,14 @@ export function transition(...properties) {
     .join(", ");
 }
 
+/** CSS keyframe names registered in src/index.css (@theme). */
+export const contentEnter = "content-enter";
+export const badgeBump = "badge-bump";
+export const confirmPulse = "confirm-pulse";
 
-export const contentEnter = keyframes`
-  from { opacity: 0; }
-  to { opacity: 1; }
-`;
-
-export const badgeBump = keyframes`
-  0% { transform: scale(1); }
-  40% { transform: scale(1.28); }
-  100% { transform: scale(1); }
-`;
-
-export const confirmPulse = keyframes`
-  0% { transform: scale(1); }
-  45% { transform: scale(1.03); }
-  100% { transform: scale(1); }
-`;
+/** Tailwind animation utility class names (motion-safe variants for new UI). */
+export const ANIMATE = {
+  contentEnter: "motion-safe:animate-content-enter",
+  badgeBump: "motion-safe:animate-badge-bump",
+  confirmPulse: "motion-safe:animate-confirm-pulse",
+};

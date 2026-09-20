@@ -1,25 +1,36 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ThemeProvider } from "@mui/material/styles";
-import CssBaseline from "@mui/material/CssBaseline";
-import useMediaQuery from "@mui/material/useMediaQuery";
-import { ColorModeContext } from "./color-mode-context";
-import { createAppTheme } from "../theme";
+import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useState } from "react";
+import { useMediaQuery } from "../hooks/useMediaQuery";
 import { readJSON, writeJSON, remove } from "../lib/storage";
+
+const ColorModeContext = createContext(null);
+
+export function useColorMode() {
+  const context = useContext(ColorModeContext);
+  if (!context) {
+    throw new Error("useColorMode must be used within a ColorModeProvider");
+  }
+  return context;
+}
 
 const MODE_KEY = "shopez.colorMode";
 
+function applyDocumentMode(mode) {
+  const root = document.documentElement;
+  root.classList.toggle("dark", mode === "dark");
+  root.style.colorScheme = mode;
+}
+
 export default function ColorModeProvider({ children }) {
-  const prefersDark = useMediaQuery("(prefers-color-scheme: dark)", { noSsr: true });
+  const prefersDark = useMediaQuery("(prefers-color-scheme: dark)");
   const [storedMode, setStoredMode] = useState(() => {
     const saved = readJSON(MODE_KEY, null);
     return saved === "light" || saved === "dark" ? saved : null;
   });
 
-
   const mode = storedMode ?? (prefersDark ? "dark" : "light");
 
-  useEffect(() => {
-    document.documentElement.style.colorScheme = mode;
+  useLayoutEffect(() => {
+    applyDocumentMode(mode);
   }, [mode]);
 
   const toggleMode = useCallback(() => {
@@ -29,7 +40,6 @@ export default function ColorModeProvider({ children }) {
       return next;
     });
   }, [prefersDark]);
-
 
   const setPreference = useCallback((preference) => {
     if (preference === "system") {
@@ -41,18 +51,10 @@ export default function ColorModeProvider({ children }) {
     setStoredMode(preference);
   }, []);
 
-  const theme = useMemo(() => createAppTheme(mode), [mode]);
   const value = useMemo(
     () => ({ mode, toggleMode, preference: storedMode ?? "system", setPreference }),
     [mode, toggleMode, storedMode, setPreference]
   );
 
-  return (
-    <ColorModeContext.Provider value={value}>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        {children}
-      </ThemeProvider>
-    </ColorModeContext.Provider>
-  );
+  return <ColorModeContext.Provider value={value}>{children}</ColorModeContext.Provider>;
 }
