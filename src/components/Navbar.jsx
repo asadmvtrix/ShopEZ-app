@@ -153,17 +153,12 @@ export default function Navbar() {
           </RouterLink>
 
           {user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={cn(iconBtn, "ml-0.5")}
-                    aria-label="Account menu"
-                    title={user.name || user.email}
-                  />
-                }
+            <div className="ml-0.5 flex items-center gap-0.5">
+              <RouterLink
+                to="/account"
+                className={cn(buttonVariants({ variant: "ghost", size: "icon" }), iconBtn)}
+                aria-label="Account settings"
+                title={user.name || user.email}
               >
                 {user.avatarUrl ? (
                   <img
@@ -176,25 +171,39 @@ export default function Navbar() {
                     {(user.name || user.email || "?").charAt(0).toUpperCase()}
                   </span>
                 )}
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-56">
-                <DropdownMenuLabel className="font-normal">
-                  <div className="text-sm font-semibold text-foreground">
-                    {user.name || "Your account"}
-                  </div>
-                  <div className="text-xs text-muted-foreground">{user.email}</div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => {
-                    navigate("/account");
-                  }}
+              </RouterLink>
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-9 shrink-0"
+                      aria-label="Account menu"
+                    />
+                  }
                 >
-                  Account settings
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleLogout}>Sign out</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  <ChevronDown className="size-4 opacity-70" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="min-w-56">
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="text-sm font-semibold text-foreground">
+                      {user.name || "Your account"}
+                    </div>
+                    <div className="text-xs text-muted-foreground">{user.email}</div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => {
+                      navigate("/account");
+                    }}
+                  >
+                    Account settings
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleLogout}>Sign out</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           ) : (
             <>
               <RouterLink

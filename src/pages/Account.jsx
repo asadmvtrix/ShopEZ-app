@@ -602,20 +602,24 @@ export default function Account() {
   const { preference, setPreference } = useColorMode();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-
-  if (!user) return null;
-
-  const forceSetup = searchParams.get("setup") === "1" || user.needsName;
+  const forceSetup = searchParams.get("setup") === "1" || Boolean(user?.needsName);
 
   const sectionParam = searchParams.get("section");
-  const active =
-    NAV.some((item) => item.id === sectionParam) ? sectionParam : forceSetup ? "profile" : "profile";
+  const active = NAV.some((item) => item.id === sectionParam) ? sectionParam : "profile";
 
   function setSection(id) {
     const next = new URLSearchParams(searchParams);
     next.set("section", id);
     if (id !== "profile") next.delete("setup");
     setSearchParams(next, { replace: true });
+  }
+
+  if (!user) {
+    return (
+      <PageContainer className="grid place-items-center py-20">
+        <p className="text-sm text-muted-foreground">Loading your account…</p>
+      </PageContainer>
+    );
   }
 
   const displayName = user.name || "Your account";

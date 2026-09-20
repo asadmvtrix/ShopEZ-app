@@ -11,7 +11,7 @@ import { RouteFallback } from "./components/Skeletons";
 import AppFlash from "./components/AppFlash";
 import ErrorBoundary from "./components/ErrorBoundary";
 import Home from "./pages/Home";
-import { ANIMATE } from "./theme/motion";
+import Account from "./pages/Account";
 
 const Browse = lazy(() => import("./pages/Browse"));
 const ProductDetails = lazy(() => import("./pages/ProductDetails"));
@@ -19,21 +19,50 @@ const Cart = lazy(() => import("./pages/Cart"));
 const Checkout = lazy(() => import("./pages/Checkout"));
 const CheckoutSuccess = lazy(() => import("./pages/CheckoutSuccess"));
 const Auth = lazy(() => import("./pages/Auth"));
-const Account = lazy(() => import("./pages/Account"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
-function ScrollToTop({ children }) {
-  const { pathname, key } = useLocation();
+function AppRoutes() {
+  const location = useLocation();
 
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, [pathname]);
+  }, [location.pathname]);
 
   return (
-    <ErrorBoundary resetKey={key}>
-      <div key={pathname} className={ANIMATE.contentEnter}>
-        {children}
-      </div>
+    <ErrorBoundary resetKey={location.key}>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/browse" element={<Browse />} />
+        <Route path="/products/:id" element={<ProductDetails />} />
+        <Route path="/cart" element={<Cart />} />
+        <Route
+          path="/checkout"
+          element={
+            <RequireAuth>
+              <Checkout />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/checkout/success"
+          element={
+            <RequireAuth>
+              <CheckoutSuccess />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/account"
+          element={
+            <RequireAuth>
+              <Account />
+            </RequireAuth>
+          }
+        />
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/payment" element={<Navigate to="/checkout" replace />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
     </ErrorBoundary>
   );
 }
@@ -44,48 +73,16 @@ export default function App() {
       <AuthProvider>
         <CatalogProvider>
           <CartProvider>
-            <AppFlash />
-            <Navbar />
-            <main className="flex-grow">
-              <Suspense fallback={<RouteFallback />}>
-                <ScrollToTop>
-                  <Routes>
-                    <Route path="/" element={<Home />} />
-                    <Route path="/browse" element={<Browse />} />
-                    <Route path="/products/:id" element={<ProductDetails />} />
-                    <Route path="/cart" element={<Cart />} />
-                    <Route
-                      path="/checkout"
-                      element={
-                        <RequireAuth>
-                          <Checkout />
-                        </RequireAuth>
-                      }
-                    />
-                    <Route
-                      path="/checkout/success"
-                      element={
-                        <RequireAuth>
-                          <CheckoutSuccess />
-                        </RequireAuth>
-                      }
-                    />
-                    <Route
-                      path="/account"
-                      element={
-                        <RequireAuth>
-                          <Account />
-                        </RequireAuth>
-                      }
-                    />
-                    <Route path="/auth" element={<Auth />} />
-                    <Route path="/payment" element={<Navigate to="/checkout" replace />} />
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </ScrollToTop>
-              </Suspense>
-            </main>
-            <SiteFooter />
+            <ErrorBoundary>
+              <AppFlash />
+              <Navbar />
+              <main className="flex-grow">
+                <Suspense fallback={<RouteFallback />}>
+                  <AppRoutes />
+                </Suspense>
+              </main>
+              <SiteFooter />
+            </ErrorBoundary>
           </CartProvider>
         </CatalogProvider>
       </AuthProvider>

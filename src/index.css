@@ -11,13 +11,14 @@
     --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
 
     --ease-shop: cubic-bezier(0.2, 0, 0, 1);
-    --animate-content-enter: content-enter 200ms var(--ease-shop) backwards;
+    --animate-content-enter: content-enter 200ms var(--ease-shop) both;
     --animate-badge-bump: badge-bump 280ms var(--ease-shop);
     --animate-confirm-pulse: confirm-pulse 220ms var(--ease-shop);
 
+    /* Transform only — never opacity, which can leave a route stuck invisible. */
     @keyframes content-enter {
-        from { opacity: 0; }
-        to { opacity: 1; }
+        from { transform: translateY(4px); }
+        to { transform: translateY(0); }
     }
     @keyframes badge-bump {
         0% { transform: scale(1); }
