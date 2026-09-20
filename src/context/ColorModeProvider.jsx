@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useState } from "react";
 import { useMediaQuery } from "../hooks/useMediaQuery";
-import { readJSON, writeJSON, remove } from "../lib/storage";
+import { readJSON, writeJSON } from "../lib/storage";
 
 const ColorModeContext = createContext(null);
 
@@ -20,40 +20,41 @@ function applyDocumentMode(mode) {
   root.style.colorScheme = mode;
 }
 
+function readStoredPreference() {
+  const saved = readJSON(MODE_KEY, null);
+  if (saved === "light" || saved === "dark" || saved === "system") return saved;
+  writeJSON(MODE_KEY, "light");
+  return "light";
+}
+
 export default function ColorModeProvider({ children }) {
   const prefersDark = useMediaQuery("(prefers-color-scheme: dark)");
-  const [storedMode, setStoredMode] = useState(() => {
-    const saved = readJSON(MODE_KEY, null);
-    return saved === "light" || saved === "dark" ? saved : null;
-  });
+  const [preference, setPreferenceState] = useState(readStoredPreference);
 
-  const mode = storedMode ?? (prefersDark ? "dark" : "light");
+  const mode =
+    preference === "system" ? (prefersDark ? "dark" : "light") : preference;
 
   useLayoutEffect(() => {
     applyDocumentMode(mode);
   }, [mode]);
 
   const toggleMode = useCallback(() => {
-    setStoredMode((current) => {
-      const next = (current ?? (prefersDark ? "dark" : "light")) === "dark" ? "light" : "dark";
+    setPreferenceState(() => {
+      const next = mode === "dark" ? "light" : "dark";
       writeJSON(MODE_KEY, next);
       return next;
     });
-  }, [prefersDark]);
+  }, [mode]);
 
-  const setPreference = useCallback((preference) => {
-    if (preference === "system") {
-      remove(MODE_KEY);
-      setStoredMode(null);
-      return;
-    }
-    writeJSON(MODE_KEY, preference);
-    setStoredMode(preference);
+  const setPreference = useCallback((next) => {
+    if (next !== "light" && next !== "dark" && next !== "system") return;
+    writeJSON(MODE_KEY, next);
+    setPreferenceState(next);
   }, []);
 
   const value = useMemo(
-    () => ({ mode, toggleMode, preference: storedMode ?? "system", setPreference }),
-    [mode, toggleMode, storedMode, setPreference]
+    () => ({ mode, toggleMode, preference, setPreference }),
+    [mode, toggleMode, preference, setPreference]
   );
 
   return <ColorModeContext.Provider value={value}>{children}</ColorModeContext.Provider>;
