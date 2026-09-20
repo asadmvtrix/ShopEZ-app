@@ -1,31 +1,31 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import Chip from "@mui/material/Chip";
-import Container from "@mui/material/Container";
-import Drawer from "@mui/material/Drawer";
-import FormControl from "@mui/material/FormControl";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import IconButton from "@mui/material/IconButton";
-import InputAdornment from "@mui/material/InputAdornment";
-import InputLabel from "@mui/material/InputLabel";
-import MenuItem from "@mui/material/MenuItem";
-import Paper from "@mui/material/Paper";
-import Radio from "@mui/material/Radio";
-import RadioGroup from "@mui/material/RadioGroup";
-import Select from "@mui/material/Select";
-import Stack from "@mui/material/Stack";
-import TextField from "@mui/material/TextField";
-import ToggleButton from "@mui/material/ToggleButton";
-import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
-import Typography from "@mui/material/Typography";
-import CloseIcon from "@mui/icons-material/Close";
-import FilterListIcon from "@mui/icons-material/FilterList";
-import SearchIcon from "@mui/icons-material/Search";
+import { Filter, Search, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { cn } from "@/lib/utils";
+import PageContainer from "../components/PageContainer";
 import ProductCard from "../components/ProductCard";
-import ProductGridSkeleton from "../components/ProductGridSkeleton";
-import { useCatalog } from "../context/catalog-context";
+import { ProductGridSkeleton } from "../components/Skeletons";
+import { useCatalog } from "../context/CatalogProvider";
 import { formatPrice } from "../config/store";
 import { consumeAppEnter, useWarmReveal } from "../hooks/useWarmReveal";
 
@@ -53,6 +53,41 @@ const comparators = {
   "name-asc": (a, b) => a.name.localeCompare(b.name),
 };
 
+const COLUMN_CLASSES = {
+  2: "md:grid-cols-2 lg:grid-cols-2",
+  3: "md:grid-cols-3 lg:grid-cols-3",
+  4: "md:grid-cols-3 lg:grid-cols-4",
+};
+
+function ColumnToggle({ value, onChange, className }) {
+  return (
+    <div
+      role="group"
+      aria-label="Products per row"
+      className={cn("inline-flex overflow-hidden rounded-[var(--radius)] border border-border", className)}
+    >
+      {[2, 3, 4].map((count) => (
+        <button
+          key={count}
+          type="button"
+          aria-label={`${count} columns`}
+          aria-pressed={value === count}
+          onClick={() => onChange(count)}
+          className={cn(
+            "min-h-10 min-w-10 px-3 text-sm font-medium transition-colors sm:min-h-8 sm:min-w-8",
+            "focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring",
+            value === count
+              ? "bg-primary text-primary-foreground"
+              : "bg-card text-foreground hover:bg-muted"
+          )}
+        >
+          {count}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function Browse() {
   const { products: allProducts, categories, loading: catalogLoading } = useCatalog();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -70,13 +105,11 @@ export default function Browse() {
     [categories, allProducts]
   );
 
-
   const category = searchParams.get("category") ?? "All";
   const search = searchParams.get("q") ?? "";
   const sort = searchParams.get("sort") ?? "featured";
   const priceId = searchParams.get("price") ?? "all";
   const priceRange = PRICE_RANGES.find((range) => range.id === priceId) ?? PRICE_RANGES[0];
-
 
   const [searchDraft, setSearchDraft] = useState(search);
 
@@ -153,288 +186,237 @@ export default function Browse() {
   ].filter(Boolean);
 
   const clearAllButton = (
-    <Button size="small" onClick={resetFilters} disabled={activeFilters.length === 0}>
+    <Button size="sm" variant="ghost" onClick={resetFilters} disabled={activeFilters.length === 0}>
       Clear all
     </Button>
   );
 
-
   const renderFilters = (showHeading) => (
-    <Stack spacing={3} sx={{ p: { xs: 2, md: 0 } }}>
+    <div className={cn("flex flex-col gap-6", showHeading ? undefined : "p-4 md:p-0")}>
       {showHeading && (
-        <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between" }}>
-          <Typography variant="subtitle2" color="text.secondary">
-            Filters
-          </Typography>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-sm font-medium text-muted-foreground">Filters</p>
           {clearAllButton}
-        </Stack>
+        </div>
       )}
 
-      <TextField
-        label="Search products"
-        value={searchDraft}
-        onChange={(event) => setSearchDraft(event.target.value)}
-        onBlur={() => {
-          if (searchDraft.trim() !== search) commitSearch();
-        }}
-        onKeyDown={(event) => {
-          if (event.key === "Enter") {
-            event.preventDefault();
-            commitSearch();
-          }
-        }}
-        slotProps={{
-          input: {
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon fontSize="small" />
-              </InputAdornment>
-            ),
-          },
-        }}
-      />
+      <div className="space-y-2">
+        <Label htmlFor="browse-search">Search products</Label>
+        <div className="relative">
+          <Search
+            className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden
+          />
+          <Input
+            id="browse-search"
+            value={searchDraft}
+            onChange={(event) => setSearchDraft(event.target.value)}
+            onBlur={() => {
+              if (searchDraft.trim() !== search) commitSearch();
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                commitSearch();
+              }
+            }}
+            className="h-10 pl-8 md:h-8"
+            placeholder="Search products"
+          />
+        </div>
+      </div>
 
-      <Box>
-        <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-          Category
-        </Typography>
-        <Stack spacing={0.25}>
-          {["All", ...categories].map((option) => (
-            <Button
-              key={option}
-              onClick={() => updateParam("category", option)}
-              variant={category === option ? "contained" : "text"}
-              color={category === option ? "primary" : "inherit"}
-              size="small"
-              sx={{ justifyContent: "space-between", fontWeight: 500 }}
-              fullWidth
-            >
-              <span>{option}</span>
-              <Typography variant="caption" color="inherit" sx={{ opacity: 0.7 }}>
-                {option === "All" ? allProducts.length : categoryCounts[option]}
-              </Typography>
-            </Button>
-          ))}
-        </Stack>
-      </Box>
+      <div>
+        <p className="mb-2 text-sm font-medium text-muted-foreground">Category</p>
+        <div className="flex flex-col gap-0.5">
+          {["All", ...categories].map((option) => {
+            const selected = category === option;
+            return (
+              <Button
+                key={option}
+                type="button"
+                onClick={() => updateParam("category", option)}
+                variant={selected ? "default" : "ghost"}
+                size="sm"
+                className="h-10 w-full justify-between font-medium sm:h-8"
+              >
+                <span>{option}</span>
+                <span className="text-xs opacity-70">
+                  {option === "All" ? allProducts.length : categoryCounts[option]}
+                </span>
+              </Button>
+            );
+          })}
+        </div>
+      </div>
 
-      <Box>
-        <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+      <div>
+        <p className="mb-2 text-sm font-medium text-muted-foreground" id="price-filter-label">
           Price
-        </Typography>
+        </p>
         <RadioGroup
           value={priceId}
-          onChange={(event) => updateParam("price", event.target.value)}
+          onValueChange={(value) => updateParam("price", value)}
+          aria-labelledby="price-filter-label"
+          className="gap-1"
         >
           {PRICE_RANGES.map((range) => (
-            <FormControlLabel
-              key={range.id}
-              value={range.id}
-              control={<Radio size="small" />}
-              label={<Typography variant="body2">{range.label}</Typography>}
-            />
+            <div key={range.id} className="flex min-h-10 items-center gap-3 sm:min-h-8">
+              <RadioGroupItem value={range.id} id={`price-${range.id}`} />
+              <Label htmlFor={`price-${range.id}`} className="font-normal">
+                {range.label}
+              </Label>
+            </div>
           ))}
         </RadioGroup>
-      </Box>
-
-    </Stack>
+      </div>
+    </div>
   );
 
   return (
-    <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 } }}>
-      <Typography variant="h1" gutterBottom>
+    <PageContainer className="py-6 md:py-10">
+      <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
         {category === "All" ? "All products" : category}
-      </Typography>
-      <Typography variant="body2" color="text.secondary">
+      </h1>
+      <p className="mt-1 text-sm text-muted-foreground">
         {results.length} {results.length === 1 ? "product" : "products"}
         {results.length > 0 &&
           ` from ${formatPrice(Math.min(...results.map((p) => p.price)))}`}
-      </Typography>
+      </p>
 
       {activeFilters.length > 0 && (
-        <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap", mt: 2 }}>
+        <div className="mt-4 flex flex-wrap gap-2">
           {activeFilters.map((filter) => (
-            <Chip
+            <Badge
               key={filter.key}
-              label={filter.label}
-              onDelete={() => {
-                if (filter.key === "q") setSearchDraft("");
-                updateParam(filter.key, null);
-              }}
-              size="small"
-            />
+              variant="outline"
+              className="h-7 gap-1 rounded-full pr-1 font-mono text-xs"
+            >
+              {filter.label}
+              <button
+                type="button"
+                className="inline-flex size-6 items-center justify-center rounded-full hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
+                aria-label={`Remove ${filter.label} filter`}
+                onClick={() => {
+                  if (filter.key === "q") setSearchDraft("");
+                  updateParam(filter.key, null);
+                }}
+              >
+                <X className="size-3.5" />
+              </button>
+            </Badge>
           ))}
-        </Stack>
+        </div>
       )}
 
-      <Box
-        sx={{
-          display: "grid",
-
-          gridTemplateColumns: { xs: "1fr", md: "minmax(0, 240px) minmax(0, 1fr)" },
-          gap: { xs: 2, md: 4 },
-          mt: 3,
-          alignItems: "start",
-        }}
-      >
-        <Paper
-          variant="outlined"
-          sx={{
-            p: 2.5,
-            display: { xs: "none", md: "block" },
-            position: "sticky",
-            top: 88,
-            alignSelf: "start",
-            width: "100%",
-            minHeight: 0,
-            maxHeight: "calc(100dvh - 104px)",
-            overflowY: "auto",
-            overscrollBehavior: "contain",
-            WebkitOverflowScrolling: "touch",
-          }}
+      <div className="mt-6 grid grid-cols-1 items-start gap-4 md:grid-cols-[minmax(0,240px)_minmax(0,1fr)] md:gap-8">
+        <aside
+          className={cn(
+            "sticky top-[88px] hidden max-h-[calc(100dvh-104px)] w-full min-h-0 self-start overflow-y-auto overscroll-contain rounded-[var(--radius)] border border-border bg-card p-5 md:block",
+            "[-webkit-overflow-scrolling:touch]"
+          )}
         >
           {renderFilters(true)}
-        </Paper>
+        </aside>
 
-        <Box>
-          <Stack
-            direction="row"
-            spacing={2}
-            useFlexGap
-            sx={{
-              alignItems: "center",
-              justifyContent: "space-between",
-              flexWrap: "wrap",
-              mb: 2.5,
-            }}
-          >
+        <div>
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
             <Button
-              startIcon={<FilterListIcon />}
-              variant="outlined"
+              variant="outline"
               onClick={() => setFiltersOpen(true)}
-              sx={{ display: { md: "none" } }}
+              className="md:hidden"
             >
+              <Filter data-icon="inline-start" />
               Filters
               {activeFilters.length > 0 ? ` (${activeFilters.length})` : ""}
             </Button>
 
-            <Stack
-              direction="row"
-              spacing={1}
-              sx={{ alignItems: "center", display: { xs: "none", lg: "flex" } }}
-            >
-              <Typography variant="caption" color="text.secondary">
-                Columns
-              </Typography>
-              <ToggleButtonGroup
-                size="small"
-                exclusive
-                value={columns}
-                onChange={(_, value) => value && setColumns(value)}
-                aria-label="Products per row"
-              >
-                {[2, 3, 4].map((count) => (
-                  <ToggleButton key={count} value={count} aria-label={`${count} columns`}>
-                    {count}
-                  </ToggleButton>
-                ))}
-              </ToggleButtonGroup>
-            </Stack>
+            <div className="hidden items-center gap-2 lg:flex">
+              <span className="text-xs text-muted-foreground">Columns</span>
+              <ColumnToggle value={columns} onChange={setColumns} />
+            </div>
 
-            <FormControl
-              size="small"
-              sx={{
-                minWidth: { sm: 200 },
-                width: { xs: "100%", sm: "auto" },
-                ml: { sm: "auto" },
-              }}
-            >
-              <InputLabel id="sort-label">Sort by</InputLabel>
+            <div className="ml-0 w-full sm:ml-auto sm:w-auto sm:min-w-[200px]">
+              <Label htmlFor="sort-by" className="sr-only">
+                Sort by
+              </Label>
               <Select
-                labelId="sort-label"
-                label="Sort by"
+                items={SORT_OPTIONS}
                 value={sort}
-                onChange={(event) => updateParam("sort", event.target.value)}
+                onValueChange={(value) => updateParam("sort", value ?? "featured")}
               >
-                {SORT_OPTIONS.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
+                <SelectTrigger id="sort-by" className="h-10 w-full sm:h-8 sm:w-[200px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent alignItemWithTrigger={false}>
+                  <SelectGroup>
+                    {SORT_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
               </Select>
-            </FormControl>
-          </Stack>
+            </div>
+          </div>
 
           {results.length === 0 ? (
-            <Paper variant="outlined" sx={{ p: 6, textAlign: "center" }}>
-              <Typography variant="h4" gutterBottom>
-                Nothing matches those filters
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
+            <div className="rounded-[var(--radius)] border border-border bg-card p-12 text-center">
+              <h2 className="mb-2 text-xl font-semibold">Nothing matches those filters</h2>
+              <p className="mb-5 text-sm text-muted-foreground">
                 Try widening the price range or clearing the search term.
-              </Typography>
-              <Button variant="contained" onClick={resetFilters}>
-                Clear filters
-              </Button>
-            </Paper>
+              </p>
+              <Button onClick={resetFilters}>Clear filters</Button>
+            </div>
           ) : !ready || catalogLoading ? (
             <ProductGridSkeleton count={9} columns={columns} />
           ) : (
-            <Box
-              sx={{
-                display: "grid",
-                gap: 2.5,
-                gridTemplateColumns: {
-                  xs: "repeat(1, 1fr)",
-                  sm: "repeat(2, 1fr)",
-                  md: `repeat(${Math.min(columns, 3)}, 1fr)`,
-                  lg: `repeat(${columns}, 1fr)`,
-                },
-              }}
+            <div
+              className={cn(
+                "grid grid-cols-1 gap-5 sm:grid-cols-2",
+                COLUMN_CLASSES[columns] ?? COLUMN_CLASSES[3]
+              )}
             >
               {results.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}
-            </Box>
+            </div>
           )}
-        </Box>
-      </Box>
+        </div>
+      </div>
 
-      <Drawer
-        anchor="left"
-        open={filtersOpen}
-        onClose={() => setFiltersOpen(false)}
-        sx={{ display: { md: "none" } }}
-      >
-        <Box sx={{ width: 300, display: "flex", flexDirection: "column", height: "100%" }}>
-          <Stack
-            direction="row"
-            sx={{
-              alignItems: "center",
-              justifyContent: "space-between",
-              p: 2,
-              borderBottom: 1,
-              borderColor: "divider",
-            }}
-          >
-            <Typography variant="h6">Filters</Typography>
-            <Stack direction="row" spacing={0.5} sx={{ alignItems: "center" }}>
+      <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+        <SheetContent
+          side="left"
+          showCloseButton={false}
+          className="flex w-[300px] flex-col gap-0 p-0 sm:max-w-[300px]"
+        >
+          <SheetHeader className="flex-row items-center justify-between space-y-0 border-b border-border p-4">
+            <SheetTitle className="text-lg font-semibold">Filters</SheetTitle>
+            <div className="flex items-center gap-1">
               {clearAllButton}
-              <IconButton onClick={() => setFiltersOpen(false)} aria-label="Close filters">
-                <CloseIcon />
-              </IconButton>
-            </Stack>
-          </Stack>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => setFiltersOpen(false)}
+                aria-label="Close filters"
+                className="size-10"
+              >
+                <X />
+              </Button>
+            </div>
+          </SheetHeader>
 
-          <Box sx={{ flexGrow: 1, overflowY: "auto" }}>{renderFilters(false)}</Box>
+          <div className="flex-grow overflow-y-auto">{renderFilters(false)}</div>
 
-          <Box sx={{ p: 2, borderTop: 1, borderColor: "divider" }}>
-            <Button variant="contained" fullWidth onClick={() => setFiltersOpen(false)}>
+          <SheetFooter className="border-t border-border p-4">
+            <Button className="w-full" onClick={() => setFiltersOpen(false)}>
               Show {results.length} {results.length === 1 ? "product" : "products"}
             </Button>
-          </Box>
-        </Box>
-      </Drawer>
-    </Container>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+    </PageContainer>
   );
 }

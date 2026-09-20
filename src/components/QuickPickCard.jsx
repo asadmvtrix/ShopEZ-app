@@ -1,19 +1,12 @@
 import { useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
-import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import IconButton from "@mui/material/IconButton";
-import Paper from "@mui/material/Paper";
-import Stack from "@mui/material/Stack";
-import Typography from "@mui/material/Typography";
-import AddIcon from "@mui/icons-material/Add";
-import CheckIcon from "@mui/icons-material/Check";
-import RemoveIcon from "@mui/icons-material/Remove";
+import { Check, Minus, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import ProductImage from "./ProductImage";
-import { useCart } from "../context/cart-context";
+import { useCart } from "../context/CartProvider";
 import { MAX_QUANTITY_PER_ITEM, formatPrice } from "../config/store";
-import { MONO } from "../theme";
-import { confirmPulse, DURATION, EASE } from "../theme/motion";
+import { ANIMATE } from "../theme/motion";
 
 export default function QuickPickCard({ product }) {
   const { addToCart, quantityOf } = useCart();
@@ -34,95 +27,67 @@ export default function QuickPickCard({ product }) {
   }
 
   return (
-    <Paper
-      variant="outlined"
-      sx={{ p: 1.5, display: "flex", gap: 1.5, alignItems: "center" }}
-    >
-      <Box
-        component={RouterLink}
+    <div className="flex items-center gap-3 rounded-[var(--radius)] border border-border bg-card p-3">
+      <RouterLink
         to={`/products/${product.id}`}
-        sx={{ flexShrink: 0, borderRadius: 1, overflow: "hidden", border: 1, borderColor: "divider" }}
+        className="shrink-0 overflow-hidden rounded-[var(--radius)] border border-border"
       >
-        <ProductImage product={product} height={72} imagePadding={0.75} sx={{ width: 72 }} />
-      </Box>
+        <ProductImage
+          product={product}
+          height={72}
+          imagePadding={0.75}
+          className="w-[72px]"
+        />
+      </RouterLink>
 
-      <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-        <Typography
-          component={RouterLink}
+      <div className="min-w-0 flex-grow">
+        <RouterLink
           to={`/products/${product.id}`}
-          variant="body2"
-          sx={{
-            display: "-webkit-box",
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: "vertical",
-            overflow: "hidden",
-            fontWeight: 600,
-            color: "text.primary",
-            textDecoration: "none",
-            "&:hover": { textDecoration: "underline" },
-          }}
+          className="line-clamp-2 text-sm font-semibold text-foreground no-underline hover:underline"
         >
           {product.name}
-        </Typography>
-        <Typography variant="h5" sx={{ color: "secondary.main", fontFamily: MONO, mt: 0.25 }}>
+        </RouterLink>
+        <p className="mt-0.5 font-mono text-xl font-semibold text-secondary">
           {formatPrice(product.price)}
-        </Typography>
+        </p>
 
-        <Stack direction="row" spacing={1} sx={{ alignItems: "center", mt: 1, flexWrap: "wrap" }}>
-          <Box
-            sx={{
-              display: "inline-flex",
-              alignItems: "center",
-              border: 1,
-              borderColor: "divider",
-              borderRadius: 1,
-            }}
-          >
-            <IconButton
-              size="small"
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <div className="inline-flex items-center rounded-[var(--radius)] border border-border">
+            <Button
+              variant="ghost"
+              size="icon-sm"
               onClick={() => setQuantity((n) => Math.max(1, n - 1))}
               disabled={capped <= 1}
               aria-label={`Decrease quantity of ${product.name}`}
+              className="size-10 sm:size-7"
             >
-              <RemoveIcon fontSize="inherit" />
-            </IconButton>
-            <Typography
-              variant="body2"
-              sx={{ minWidth: 20, textAlign: "center", fontVariantNumeric: "tabular-nums" }}
-            >
-              {capped}
-            </Typography>
-            <IconButton
-              size="small"
+              <Minus />
+            </Button>
+            <span className="min-w-5 text-center text-sm tabular-nums">{capped}</span>
+            <Button
+              variant="ghost"
+              size="icon-sm"
               onClick={() => setQuantity((n) => Math.min(headroom, n + 1))}
               disabled={!canAdd || capped >= headroom}
               aria-label={`Increase quantity of ${product.name}`}
+              className="size-10 sm:size-7"
             >
-              <AddIcon fontSize="inherit" />
-            </IconButton>
-          </Box>
+              <Plus />
+            </Button>
+          </div>
 
           <Button
-            variant="contained"
-            color="secondary"
-            size="small"
+            variant="secondary"
+            size="sm"
             disabled={!canAdd}
-            startIcon={justAdded ? <CheckIcon /> : null}
             onClick={handleAdd}
-            sx={
-              justAdded
-                ? {
-                    "@media (prefers-reduced-motion: no-preference)": {
-                      animation: `${confirmPulse} ${DURATION.normal}ms ${EASE}`,
-                    },
-                  }
-                : undefined
-            }
+            className={cn(justAdded && ANIMATE.confirmPulse)}
           >
+            {justAdded ? <Check data-icon="inline-start" /> : null}
             {!canAdd ? "Max reached" : justAdded ? "Added" : "Add to cart"}
           </Button>
-        </Stack>
-      </Box>
-    </Paper>
+        </div>
+      </div>
+    </div>
   );
 }

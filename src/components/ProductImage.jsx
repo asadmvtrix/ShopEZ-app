@@ -1,48 +1,74 @@
 import { useState } from "react";
-import Box from "@mui/material/Box";
-import Skeleton from "@mui/material/Skeleton";
-import Typography from "@mui/material/Typography";
-import { transition } from "../theme/motion";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
+function resolveHeight(height) {
+  if (height == null) {
+    return { className: undefined, style: undefined, intrinsicHeight: 300 };
+  }
 
-function ProductImageInner({ product, height = 200, imagePadding = 1.5, sx }) {
+  if (typeof height === "number") {
+    return {
+      className: undefined,
+      style: { height: `${height}px` },
+      intrinsicHeight: height,
+    };
+  }
+
+  const xs = height?.xs ?? 200;
+  const sm = height?.sm ?? xs;
+  const md = height?.md ?? sm;
+
+  return {
+    className: "h-[var(--pi-h)] sm:h-[var(--pi-h-sm)] md:h-[var(--pi-h-md)]",
+    style: {
+      "--pi-h": `${xs}px`,
+      "--pi-h-sm": `${sm}px`,
+      "--pi-h-md": `${md}px`,
+    },
+    intrinsicHeight: md,
+  };
+}
+
+function ProductImageInner({
+  product,
+  height = 200,
+  imagePadding = 1.5,
+  className,
+  style,
+}) {
   const [phase, setPhase] = useState("loading");
   const ready = phase === "ready";
   const failed = phase === "error";
+  const resolved = resolveHeight(height);
+  const paddingPx = imagePadding * 8;
 
   return (
-    <Box
-      sx={{
-        position: "relative",
-        height,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        bgcolor: failed || ready ? "common.white" : "action.hover",
-        overflow: "hidden",
-        ...sx,
-      }}
+    <div
+      className={cn(
+        "relative flex items-center justify-center overflow-hidden",
+        failed || ready ? "bg-card" : "bg-muted",
+        resolved.className,
+        className
+      )}
+      style={{ ...resolved.style, ...style }}
     >
       {!failed && !ready && (
-        <Skeleton
-          animation="wave"
-          variant="rectangular"
-          sx={{ position: "absolute", inset: 0, height: "100%", width: "100%" }}
-        />
+        <Skeleton className="absolute inset-0 size-full rounded-none" />
       )}
 
       {failed ? (
-        <Typography variant="h3" sx={{ color: "grey.400" }}>
+        <span className="text-3xl font-semibold text-muted-foreground/40" aria-hidden>
           {product.name.charAt(0)}
-        </Typography>
+        </span>
       ) : (
-        <Box
-          component="img"
+        <img
           src={product.image}
           alt={product.name}
           loading="lazy"
+          width={400}
+          height={resolved.intrinsicHeight}
           ref={(img) => {
-
             if (!img || phase !== "loading") return;
             if (img.complete) {
               setPhase(img.naturalWidth > 0 ? "ready" : "error");
@@ -50,17 +76,14 @@ function ProductImageInner({ product, height = 200, imagePadding = 1.5, sx }) {
           }}
           onLoad={() => setPhase("ready")}
           onError={() => setPhase("error")}
-          sx={{
-            maxHeight: "100%",
-            maxWidth: "100%",
-            objectFit: "contain",
-            p: imagePadding,
-            opacity: ready ? 1 : 0,
-            transition: transition("opacity"),
-          }}
+          className={cn(
+            "max-h-full max-w-full object-contain transition-opacity duration-160",
+            ready ? "opacity-100" : "opacity-0"
+          )}
+          style={{ padding: `${paddingPx}px` }}
         />
       )}
-    </Box>
+    </div>
   );
 }
 

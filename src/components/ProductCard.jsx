@@ -1,17 +1,12 @@
 import { useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
-import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import Card from "@mui/material/Card";
-import CardActions from "@mui/material/CardActions";
-import Typography from "@mui/material/Typography";
-import AddShoppingCartIcon from "@mui/icons-material/AddShoppingCart";
-import CheckIcon from "@mui/icons-material/Check";
+import { Check, ShoppingCart } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import ProductImage from "./ProductImage";
-import { useCart } from "../context/cart-context";
+import { useCart } from "../context/CartProvider";
 import { formatPrice, MAX_QUANTITY_PER_ITEM } from "../config/store";
-import { MONO } from "../theme";
-import { confirmPulse, DURATION, EASE, transition } from "../theme/motion";
+import { ANIMATE } from "../theme/motion";
 
 export default function ProductCard({ product, imageHeight = 190 }) {
   const { addToCart, quantityOf } = useCart();
@@ -26,92 +21,45 @@ export default function ProductCard({ product, imageHeight = 190 }) {
   }
 
   return (
-    <Card
-      sx={{
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-        "@media (prefers-reduced-motion: no-preference)": {
-          "&:hover": {
-            borderColor: "primary.main",
-            boxShadow: 2,
-            transform: "translateY(-2px)",
-          },
-          "&:hover .product-card-image img": { transform: "scale(1.04)" },
-        },
-        "& .product-card-image img": {
-          transition: transition("transform"),
-        },
-        transition: transition("border-color", "box-shadow", "transform"),
-      }}
+    <div
+      className={cn(
+        "flex h-full flex-col overflow-hidden rounded-[var(--radius)] border border-border bg-card text-card-foreground",
+        "transition-[border-color,box-shadow,transform] duration-160",
+        "motion-safe:hover:-translate-y-0.5 motion-safe:hover:border-primary motion-safe:hover:shadow-md",
+        "[&_.product-card-image_img]:transition-transform [&_.product-card-image_img]:duration-160",
+        "motion-safe:hover:[&_.product-card-image_img]:scale-[1.04]"
+      )}
     >
-      <Box
-        component={RouterLink}
+      <RouterLink
         to={`/products/${product.id}`}
-        sx={{
-          color: "inherit",
-          textDecoration: "none",
-          display: "block",
-          borderRadius: "inherit",
-          "&:focus-visible": {
-            outline: "2px solid",
-            outlineColor: "primary.main",
-            outlineOffset: -2,
-          },
-        }}
+        className="block rounded-[inherit] text-inherit no-underline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary"
       >
-        <Box className="product-card-image">
+        <div className="product-card-image">
           <ProductImage product={product} height={imageHeight} />
-        </Box>
-        <Box sx={{ px: 2, pt: 1.5, pb: 1 }}>
-          <Typography variant="caption" color="text.secondary">
-            {product.category}
-          </Typography>
-          <Typography
-            variant="subtitle1"
-            sx={{
-              fontWeight: 600,
-              lineHeight: 1.35,
-              mt: 0.25,
-              display: "-webkit-box",
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: "vertical",
-              overflow: "hidden",
-              minHeight: "2.7em",
-            }}
-          >
+        </div>
+        <div className="px-4 pt-3 pb-2">
+          <p className="text-xs text-muted-foreground">{product.category}</p>
+          <h3 className="mt-0.5 min-h-[2.7em] text-base leading-[1.35] font-semibold line-clamp-2">
             {product.name}
-          </Typography>
-        </Box>
-      </Box>
+          </h3>
+        </div>
+      </RouterLink>
 
-      <Box sx={{ flexGrow: 1 }} />
+      <div className="flex-grow" />
 
-      <Box sx={{ px: 2, pb: 1 }}>
-        <Typography variant="h6" sx={{ fontFamily: MONO }}>
-          {formatPrice(product.price)}
-        </Typography>
-      </Box>
+      <div className="px-4 pb-2">
+        <p className="font-mono text-lg font-semibold">{formatPrice(product.price)}</p>
+      </div>
 
-      <CardActions sx={{ px: 2, pb: 2, pt: 0, gap: 1 }}>
+      <div className="flex gap-2 px-4 pt-0 pb-4">
         <Button
-          variant="contained"
-          color="secondary"
-          size="small"
-          fullWidth
+          variant="secondary"
+          size="sm"
+          className={cn("w-full", justAdded && ANIMATE.confirmPulse)}
           disabled={atLimit}
-          startIcon={justAdded ? <CheckIcon /> : <AddShoppingCartIcon />}
           onClick={handleAdd}
-          sx={
-            justAdded
-              ? {
-                  "@media (prefers-reduced-motion: no-preference)": {
-                    animation: `${confirmPulse} ${DURATION.normal}ms ${EASE}`,
-                  },
-                }
-              : undefined
-          }
         >
+          {justAdded ? <Check data-icon="inline-start" /> : <ShoppingCart data-icon="inline-start" />}
           {atLimit
             ? "Max reached"
             : justAdded
@@ -120,7 +68,7 @@ export default function ProductCard({ product, imageHeight = 190 }) {
                 ? `In cart (${quantity})`
                 : "Add to cart"}
         </Button>
-      </CardActions>
-    </Card>
+      </div>
+    </div>
   );
 }

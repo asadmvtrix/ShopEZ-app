@@ -1,67 +1,48 @@
 import { Link as RouterLink } from "react-router-dom";
-import Box from "@mui/material/Box";
-import Card from "@mui/material/Card";
-import CardActionArea from "@mui/material/CardActionArea";
-import Typography from "@mui/material/Typography";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import { ChevronRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 import ProductImage from "./ProductImage";
-import { useCatalog } from "../context/catalog-context";
+import { useCatalog } from "../context/CatalogProvider";
 import { formatPriceShort } from "../config/store";
 
 export default function CategoryTiles() {
   const { categorySummaries } = useCatalog();
 
   return (
-    <Box
-      sx={{
-        display: "grid",
-        gap: { xs: 1.5, sm: 2 },
-        gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(4, 1fr)" },
-      }}
-    >
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
       {categorySummaries.map((summary) => (
-        <Card key={summary.category}>
-          <CardActionArea
-            component={RouterLink}
-            to={`/browse?category=${encodeURIComponent(summary.category)}`}
-            sx={{
-              p: 1.5,
-              display: "flex",
-              gap: 1.5,
-              alignItems: "center",
-              "@media (prefers-reduced-motion: no-preference)": {
-                "&:hover .category-chevron": { transform: "translateX(4px)" },
-              },
-            }}
-          >
-            <ProductImage
-              product={{ image: summary.image, name: summary.category }}
-              height={60}
-              imagePadding={0.75}
-              sx={{ width: 60, flexShrink: 0, borderRadius: 1, border: 1, borderColor: "divider" }}
-            />
-            <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-              <Typography variant="h5" noWrap>
-                {summary.category}
-              </Typography>
-              <Typography variant="caption" color="text.secondary" noWrap sx={{ display: "block" }}>
-                {summary.count} {summary.count === 1 ? "product" : "products"}
-              </Typography>
-              <Typography variant="caption" color="text.secondary" noWrap sx={{ display: "block" }}>
-                from {formatPriceShort(summary.from)}
-              </Typography>
-            </Box>
-            <ChevronRightIcon
-              className="category-chevron"
-              fontSize="small"
-              sx={{
-                color: "text.disabled",
-                transition: "transform 220ms cubic-bezier(0.22, 1, 0.36, 1)",
-              }}
-            />
-          </CardActionArea>
-        </Card>
+        <RouterLink
+          key={summary.category}
+          to={`/browse?category=${encodeURIComponent(summary.category)}`}
+          className={cn(
+            "group flex items-center gap-3 rounded-[var(--radius)] border border-border bg-card p-3 text-inherit no-underline",
+            "transition-colors hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          )}
+        >
+          <ProductImage
+            product={{ image: summary.image, name: summary.category }}
+            height={60}
+            imagePadding={0.75}
+            className="w-[60px] shrink-0 rounded-[var(--radius)] border border-border"
+          />
+          <div className="min-w-0 flex-grow">
+            <p className="truncate text-base font-semibold">{summary.category}</p>
+            <p className="block truncate text-xs text-muted-foreground">
+              {summary.count} {summary.count === 1 ? "product" : "products"}
+            </p>
+            <p className="block truncate text-xs text-muted-foreground">
+              from {formatPriceShort(summary.from)}
+            </p>
+          </div>
+          <ChevronRight
+            className={cn(
+              "size-4 shrink-0 text-muted-foreground/60 transition-transform duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)]",
+              "motion-safe:group-hover:translate-x-1"
+            )}
+            aria-hidden
+          />
+        </RouterLink>
       ))}
-    </Box>
+    </div>
   );
 }

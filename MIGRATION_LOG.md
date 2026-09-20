@@ -469,3 +469,92 @@ Phase 3 did **not** commit.
 
 ---
 
+## Phase 4 — Catalog (2026-09-20)
+
+### What Phase 4 required
+Migrate catalog UI off MUI: ProductCard, ProductGrid, ProductImage, QuickPickCard, CategoryTiles, Home, Browse.
+Browse URL search-param filter logic must stay exact; desktop sidebar + mobile Sheet; do not change catalog service/shape.
+Finish masthead children still on MUI after Phase 3 (`ProductImage` / `QuickPickCard`).
+
+### Docs grounding
+- Added `select` + `radio-group` via `npx shadcn@latest add` (Base UI; Select requires `items` on root).
+- Router CTAs continue Phase 3 pattern: `buttonVariants` + `Link` (not Button `render`).
+- ProductImage API kept compatible for Phase 5 consumers (Cart / ProductDetails): numeric or `{ xs, sm, md }` height; `imagePadding` (MUI spacing × 8px); `className` / `style` instead of `sx`.
+
+### Files changed (Phase 4 only)
+| Path | Change |
+|---|---|
+| `src/components/ProductImage.jsx` | Tailwind + shadcn Skeleton; responsive CSS-var heights; no MUI |
+| `src/components/ProductCard.jsx` | Link target for media/title; secondary Add-to-cart Button; lucide icons |
+| `src/components/ProductGrid.jsx` | CSS grid column map (parity with xs/sm/md/lg breakpoints) |
+| `src/components/QuickPickCard.jsx` | qty ± + add; ≥40px mobile tap targets on steppers |
+| `src/components/CategoryTiles.jsx` | single Link tiles; chevron hover motion |
+| `src/components/StorefrontMasthead.jsx` | ProductImage `className` (drop `sx`) |
+| `src/pages/Home.jsx` | PageContainer; column density toggle; scroller; CTA link |
+| `src/pages/Browse.jsx` | sticky filter sidebar; Sheet drawer; Select sort; RadioGroup price; Badge chips; URL logic unchanged |
+| `src/components/ui/select.jsx` | **new** (shadcn) |
+| `src/components/ui/radio-group.jsx` | **new** (shadcn) |
+| `MIGRATION_LOG.md` | this Phase 4 section |
+
+Catalog service / `CatalogProvider` / product data shape: **unchanged**.
+
+### Deviations / decisions
+1. **ProductCard content** — Phase brief mentions spec badges + stock; current MUI card had category/title/price/add only. Kept parity (no new badges/stock).
+2. **Image fit** — brief says aspect-ratio + `object-cover`; existing UI used fixed height + `object-contain`. Kept contain + height for parity.
+3. **Product photo surface** — loading `bg-muted`, ready/error `bg-card` (tokenized) instead of MUI `common.white` / `action.hover`.
+4. **Column density** — plain `role="group"` toggle buttons (not a new ToggleGroup package); same exclusive 2/3/4 behavior.
+5. **Filter chips** — Badge + icon button remove (Chip `onDelete` equivalent).
+6. **Accordion / Slider / Checkbox** — not used by current Browse filters; not added.
+7. **Lint** — still **30** errors (unchanged vs Phase 3); no new Phase 4 lint categories.
+8. Did **not** commit.
+
+### Verification
+| Check | Result |
+|---|---|
+| `npm run build` | **PASS** — vite 8.3.0 |
+| `npm run lint` | **FAIL** — 30 errors (same baseline as Phase 3) |
+| Phase 4 files `@mui` imports | **none** |
+| Browse URL params (`category`, `q`, `sort`, `price`) | logic copied verbatim (debounce, commitSearch, updateParam, resetFilters, filter/sort) |
+| Remaining `@mui` under `src` | 14 files (Phase 5–7: details/cart, auth/account/checkout, theme bridge) |
+
+#### Bundle sizes after Phase 4 (raw + gzip level 9)
+
+| Asset class | Raw | Gzip (level 9) | vs Phase 3 |
+|---|---:|---:|---|
+| All JS | 1118.84 kB (1,145,696 B) | 348.55 kB (356,912 B) | **+~28.5 kB raw** (Select/Radio in Browse; ProductCard chunk shared) |
+| All CSS | 71.84 kB (73,569 B) | 12.54 kB (12,845 B) | **+~10 kB raw** |
+| **JS + CSS** | **1190.69 kB** | **361.09 kB** | |
+
+MUI chunk ~305.9 kB raw / ~94.0 kB gzip (down from Phase 3 ~329.6 / ~100.7) — catalog pages no longer pull Card/Drawer/Select/etc. from MUI.
+
+### Manual test checklist (375px & 1280px, light & dark)
+- [ ] Home: masthead ProductImage + QuickPickCard; popular horizontal scroll ±; category tiles navigate with `?category=`
+- [ ] Home: column toggle 2/3/4 updates “More to explore” grid; “View all products” → `/browse`
+- [ ] Browse: search debounce 500ms + Enter/blur commit; category buttons; price radios; sort Select
+- [ ] Browse URL: `?category=&q=&sort=&price=` round-trip; Clear all / chip remove; empty state
+- [ ] Browse mobile: Filters Sheet left; Show N products closes; sticky desktop sidebar scrolls independently
+- [ ] ProductCard: link opens details; Add to cart / In cart (n) / Max reached; confirm pulse when motion allowed
+- [ ] QuickPickCard qty ± respects cart headroom; add works from masthead
+- [ ] ProductImage: loading skeleton → fade-in; broken image letter fallback
+- [ ] Spot-check Cart / ProductDetails still render ProductImage (Phase 5 files still MUI wrappers)
+
+### Suggested commit message (when you choose to commit)
+
+```
+chore: migrate catalog UI to Tailwind/shadcn (Phase 4)
+
+Replace Home/Browse product cards and filters with shared catalog
+components; keep URL filter logic and catalog data shape unchanged.
+```
+
+Phase 4 did **not** commit.
+
+### Blockers / notes for Phase 5
+1. Product details + cart slice: ProductDetails, Cart, OrderSummary, quantity controls — still on MUI.
+2. ProductImage is already Tailwind; Cart/ProductDetails only need wrapper migration (responsive height API already supported).
+3. Lint still red (30) — cleanup timing still open.
+4. Dirty WIP still mixed with migration diffs — commit/stash strategy still open.
+5. Bundle still larger than Phase 0 until Phase 7 uninstalls MUI; expect further Select/Radio reuse on ProductDetails qty if mapped to Select.
+
+---
+

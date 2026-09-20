@@ -1,23 +1,34 @@
-import Box from "@mui/material/Box";
+import { cn } from "@/lib/utils";
 import ProductCard from "./ProductCard";
 
+const COLUMN_CLASSES = {
+  1: "lg:grid-cols-1",
+  2: "lg:grid-cols-2",
+  3: "lg:grid-cols-3",
+  4: "lg:grid-cols-4",
+};
+
+const MD_COLUMN_CLASSES = {
+  1: "md:grid-cols-1",
+  2: "md:grid-cols-2",
+  3: "md:grid-cols-3",
+  4: "md:grid-cols-3",
+};
+
 export default function ProductGrid({ products, columns = 4 }) {
+  const cols = Math.min(Math.max(columns, 1), 4);
+
   return (
-    <Box
-      sx={{
-        display: "grid",
-        gap: 2.5,
-        gridTemplateColumns: {
-          xs: "repeat(1, 1fr)",
-          sm: "repeat(2, 1fr)",
-          md: `repeat(${Math.min(columns, 3)}, 1fr)`,
-          lg: `repeat(${columns}, 1fr)`,
-        },
-      }}
+    <div
+      className={cn(
+        "grid grid-cols-1 gap-5 sm:grid-cols-2",
+        MD_COLUMN_CLASSES[cols],
+        COLUMN_CLASSES[cols]
+      )}
     >
       {products.map((product) => (
         <ProductCard key={product.id} product={product} />
       ))}
-    </Box>
+    </div>
   );
 }
